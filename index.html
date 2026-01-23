@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Platform - Deposits & Withdrawals</title>
+    <!-- Solana Web3.js and SPL Token libraries -->
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.iife.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .top-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1001;
+        }
+
+        .chain-select {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .chain-select:focus {
+            outline: none;
+            border-color: #4a5568;
+            box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.1);
+        }
+
+        .wallet-connect-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .wallet-connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .wallet-connect-btn.connected {
+            background: linear-gradient(135deg, #718096, #4a5568);
+        }
+
+        .wallet-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            display: none;
+            z-index: 1002;
+        }
+
+        .wallet-dropdown.show {
+            display: block;
+        }
+
+        .wallet-option {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .wallet-option:last-child {
+            border-bottom: none;
+        }
+
+        .wallet-option:hover {
+            background-color: #f8fafc;
+        }
+
+        .wallet-option .wallet-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+
+        .metamask-icon {
+            background: linear-gradient(135deg, #718096, #4a5568);
+        }
+
+        .phantom-icon {
+            background: linear-gradient(135deg, #a0aec0, #718096);
+        }
+
+        .rabby-icon {
+            background: linear-gradient(135deg, #cbd5e0, #a0aec0);
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .wallet-info {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .deposit-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .deposit-form {
+            display: none;
+        }
+
+        .deposit-form.active {
+            display: block;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .form-row .token-group {
+            flex: 0 0 130px;
+            margin-bottom: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .token-select-compact {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.95rem;
+        }
+
+        .amount-wrapper {
+            position: relative;
+        }
+
+        .token-balance {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+
+        .max-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #2d3748;
+            transition: all 0.2s ease;
+        }
+
+        .max-btn:hover {
+            background: #cbd5e0;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4a5568;
+        }
+
+        .deposit-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .deposit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .deposit-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .status.success {
+            background: #e2e8f0;
+            color: #1a202c;
+            border: 1px solid #cbd5e0;
+        }
+
+        .status.error {
+            background: #2d3748;
+            color: #e2e8f0;
+            border: 1px solid #4a5568;
+        }
+
+        .status.info {
+            background: #f7fafc;
+            color: #2d3748;
+            border: 1px solid #cbd5e0;
+        }
+
+        .deposit-info {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .deposit-address {
+            font-family: monospace;
+            background: white;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #cbd5e1;
+            word-break: break-all;
+            font-size: 0.85rem;
+        }
+
+        .network-info {
+            background: #e2e8f0;
+            border: 1px solid #718096;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            text-align: center;
+            color: #1a202c;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .debug-notifications {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 350px;
+            pointer-events: none;
+        }
+
+        .debug-notification {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px 16px;
+            margin-top: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: slideInRight 0.3s ease, fadeOut 0.3s ease 4.7s;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        .debug-section {
+            display: none;
+        }
+
+        .transaction-log {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .transaction-log h4 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .transaction-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px;
+            margin: 5px 0;
+            font-size: 0.85rem;
+        }
+
+        .tx-hash {
+            font-family: monospace;
+            color: #4a5568;
+            word-break: break-all;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4a5568;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .balance-check {
+            background: #f7fafc;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .balance-check h4 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* Deposit Totals Styles */
+        .deposit-totals-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px solid #cbd5e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .deposit-totals-container h3 {
+            font-size: 1rem;
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .deposit-totals-container h3::before {
+            content: '📊';
+        }
+
+        .totals-summary {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .total-main {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .total-label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .total-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+            font-family: 'Segoe UI', monospace;
+        }
+
+        .total-count {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 8px;
+        }
+
+        .totals-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 500px) {
+            .totals-breakdown {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .breakdown-section {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .breakdown-section h5 {
+            font-size: 0.8rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 0.9rem;
+        }
+
+        .breakdown-item span:first-child {
+            color: #4a5568;
+        }
+
+        .breakdown-item span:last-child {
+            font-weight: 600;
+            color: #2d3748;
+            font-family: monospace;
+        }
+
+        .reset-totals-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            color: #718096;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .reset-totals-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+
+        .sync-status {
+            font-size: 0.75rem;
+            color: #718096;
+            margin-top: 8px;
+        }
+
+        .deposit-history-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .deposit-history-section h5 {
+            font-size: 0.8rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .deposit-history-list {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-network {
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #4a5568;
+            text-transform: capitalize;
+        }
+
+        .history-date {
+            color: #a0aec0;
+            font-size: 0.75rem;
+        }
+
+        .totals-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .refresh-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 6px;
+            color: #4a5568;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #cbd5e0;
+        }
+
+        .totals-actions .reset-totals-btn {
+            flex: 1;
+        }
+
+        .supabase-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            z-index: 1001;
+        }
+
+        .supabase-status.connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .supabase-status.disconnected {
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug Notifications -->
+    <div class="debug-notifications" id="debugNotifications"></div>
+
+    <!-- Top Controls - Fixed to browser window -->
+    <div class="top-controls">
+        <select class="chain-select" id="topChainSelect" onchange="handleTopChainChange()">
+            <option value="">Select Chain</option>
+            <option value="ethereum">Ethereum</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="base">Base</option>
+            <option value="solana">Solana</option>
+        </select>
+        <div style="position: relative;">
+            <button class="wallet-connect-btn" id="walletConnectBtn" onclick="toggleWalletDropdown()">
+                <span id="walletConnectText">Connect Wallet</span>
+                <span id="walletConnectIcon">⚡</span>
+            </button>
+            <div class="wallet-dropdown" id="walletDropdown">
+                <div class="wallet-option" onclick="connectMetaMask()">
+                    <div class="wallet-icon metamask-icon"></div>
+                    <span>MetaMask</span>
+                </div>
+                <div class="wallet-option" onclick="connectPhantom()">
+                    <div class="wallet-icon phantom-icon"></div>
+                    <span>Phantom</span>
+                </div>
+                <div class="wallet-option" onclick="connectRabby()">
+                    <div class="wallet-icon rabby-icon"></div>
+                    <span>Rabby</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <div class="header">
+            <h1>Crypto Platform</h1>
+            <p>Deposit USDC & USDT Securely</p>
+        </div>
+
+        <div class="deposit-section">
+            <h2 class="section-title">Deposit Tokens</h2>
+            
+            <div id="depositForm" class="deposit-form">
+                <div class="form-row">
+                    <div class="form-group token-group">
+                        <label for="tokenSelect">Token:</label>
+                        <select id="tokenSelect" class="token-select-compact">
+                            <option value="">Select...</option>
+                            <option value="USDC">USDC</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">Amount:</label>
+                        <div class="amount-wrapper">
+                            <input type="number" id="amount" placeholder="0.0" step="0.000001" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="token-balance">
+                    <span id="tokenBalanceDisplay">Balance: --</span>
+                    <button class="max-btn" onclick="setMaxAmount()" id="maxBtn" style="display: none;">MAX</button>
+                </div>
+
+                <div class="deposit-info">
+                    <p style="margin-bottom: 5px; font-size: 0.9rem;"><strong>Deposit Address:</strong></p>
+                    <p id="depositAddress" class="deposit-address">Select a chain to see deposit address</p>
+                    <div class="network-info" style="display: none;" id="networkInfo">
+                        <span id="networkInfoText"></span>
+                    </div>
+                </div>
+
+                <button class="deposit-btn" onclick="depositTokens()" disabled>
+                    <span id="depositBtnText">Deposit Tokens</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="transaction-log" id="transactionLog" style="display: none;">
+            <h4>Transaction History</h4>
+            <div id="transactionList"></div>
+        </div>
+
+        <!-- Deposit Totals Section -->
+        <div class="deposit-totals-container" id="depositTotalsContainer">
+            <h3>Your Deposit Summary</h3>
+            <div id="depositTotals"></div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        let currentWallet = null;
+        let currentProvider = null;
+        let currentAddress = null;
+        let currentChainId = null;
+        let transactionHistory = [];
+        let currentTokenBalance = 0;
+        
+        // Solana connection instance
+        let solanaConnection = null;
+        
+        // =============================================
+        // SUPABASE CONFIGURATION
+        // =============================================
+        const SUPABASE_URL = 'https://ltgaocmbllnsmufsqvbt.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_SSII0h2vpbphbiX_4HkN5A_Evej7mbJ';
+        
+        // Initialize Supabase client
+        let supabase = null;
+        
+        function initSupabase() {
+            if (SUPABASE_URL === 'YOUR_SUPABASE_PROJECT_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+                console.warn('Supabase not configured. Please add your credentials.');
+                debugLog('⚠️ Supabase not configured - using local storage fallback');
+                return false;
+            }
+            
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                debugLog('✓ Supabase connected');
+                return true;
+            } catch (error) {
+                debugLog(`Supabase init error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Deposit totals tracking (loaded from Supabase)
+        let depositTotals = {
+            byToken: {
+                USDC: 0,
+                USDT: 0
+            },
+            byNetwork: {
+                ethereum: { USDC: 0, USDT: 0 },
+                arbitrum: { USDC: 0, USDT: 0 },
+                base: { USDC: 0, USDT: 0 },
+                solana: { USDC: 0, USDT: 0 }
+            },
+            totalUSD: 0,
+            depositCount: 0,
+            history: []
+        };
+        
+        // Load deposit totals from Supabase
+        async function loadDepositTotals() {
+            if (!currentAddress) {
+                debugLog('No wallet connected, skipping deposit load');
+                return;
+            }
+            
+            if (!supabase) {
+                // Fallback to localStorage if Supabase not configured
+                loadDepositTotalsLocal();
+                return;
+            }
+            
+            try {
+                debugLog(`Loading deposits for wallet: ${currentAddress}`);
+                
+                // Get wallet summary using the database function
+                const { data: summary, error: summaryError } = await supabase
+                    .rpc('get_wallet_summary', { p_wallet_address: currentAddress.toLowerCase() });
+                
+                if (summaryError) {
+                    throw summaryError;
+                }
+                
+                // Get recent deposit history
+                const { data: history, error: historyError } = await supabase
+                    .from('deposits')
+                    .select('*')
+                    .eq('wallet_address', currentAddress.toLowerCase())
+                    .eq('status', 'confirmed')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                
+                if (historyError) {
+                    throw historyError;
+                }
+                
+                // Update local state
+                if (summary) {
+                    depositTotals = {
+                        byToken: {
+                            USDC: parseFloat(summary.by_token?.USDC) || 0,
+                            USDT: parseFloat(summary.by_token?.USDT) || 0
+                        },
+                        byNetwork: {
+                            ethereum: { 
+                                USDC: 0, USDT: 0,
+                                total: parseFloat(summary.by_network?.ethereum) || 0 
+                            },
+                            arbitrum: { 
+                                USDC: 0, USDT: 0,
+                                total: parseFloat(summary.by_network?.arbitrum) || 0 
+                            },
+                            base: { 
+                                USDC: 0, USDT: 0,
+                                total: parseFloat(summary.by_network?.base) || 0 
+                            },
+                            solana: { 
+                                USDC: 0, USDT: 0,
+                                total: parseFloat(summary.by_network?.solana) || 0 
+                            }
+                        },
+                        totalUSD: parseFloat(summary.total_amount) || 0,
+                        depositCount: parseInt(summary.total_deposits) || 0,
+                        history: history || []
+                    };
+                }
+                
+                debugLog(`Loaded ${depositTotals.depositCount} deposits, total: $${depositTotals.totalUSD}`);
+                updateDepositTotalsDisplay();
+                
+            } catch (error) {
+                debugLog(`Error loading deposits: ${error.message}`);
+                // Fallback to localStorage
+                loadDepositTotalsLocal();
+            }
+        }
+        
+        // Save deposit to Supabase
+        async function saveDepositToSupabase(amount, token, network, txHash) {
+            if (!supabase) {
+                // Fallback to localStorage
+                saveDepositLocal(amount, token, network, txHash);
+                return;
+            }
+            
+            try {
+                const depositRecord = {
+                    wallet_address: currentAddress.toLowerCase(),
+                    amount: amount,
+                    token: token,
+                    network: network,
+                    tx_hash: txHash,
+                    status: 'confirmed'
+                };
+                
+                debugLog(`Saving deposit to Supabase: ${JSON.stringify(depositRecord)}`);
+                
+                const { data, error } = await supabase
+                    .from('deposits')
+                    .insert([depositRecord])
+                    .select();
+                
+                if (error) {
+                    // Check if it's a duplicate (already recorded)
+                    if (error.code === '23505') {
+                        debugLog('Deposit already recorded (duplicate tx_hash)');
+                        return;
+                    }
+                    throw error;
+                }
+                
+                debugLog(`Deposit saved successfully: ${data[0].id}`);
+                
+                // Reload totals to get fresh data
+                await loadDepositTotals();
+                
+            } catch (error) {
+                debugLog(`Error saving deposit: ${error.message}`);
+                // Fallback to localStorage
+                saveDepositLocal(amount, token, network, txHash);
+            }
+        }
+        
+        // LocalStorage fallback functions
+        function loadDepositTotalsLocal() {
+            try {
+                const saved = localStorage.getItem(`cryptoDeposits_${currentAddress}`);
+                if (saved) {
+                    depositTotals = JSON.parse(saved);
+                    debugLog('Loaded deposit totals from local storage');
+                    updateDepositTotalsDisplay();
+                }
+            } catch (error) {
+                debugLog(`Error loading local deposits: ${error.message}`);
+            }
+        }
+        
+        function saveDepositLocal(amount, token, network, txHash) {
+            depositTotals.byToken[token] += amount;
+            depositTotals.byNetwork[network].total = (depositTotals.byNetwork[network].total || 0) + amount;
+            depositTotals.totalUSD += amount;
+            depositTotals.depositCount++;
+            depositTotals.history.unshift({
+                amount, token, network, tx_hash: txHash,
+                created_at: new Date().toISOString(),
+                wallet_address: currentAddress
+            });
+            
+            try {
+                localStorage.setItem(`cryptoDeposits_${currentAddress}`, JSON.stringify(depositTotals));
+                debugLog('Saved to local storage (fallback)');
+            } catch (error) {
+                debugLog(`Local storage error: ${error.message}`);
+            }
+            
+            updateDepositTotalsDisplay();
+        }
+        
+        // Update deposit totals (called after successful transaction)
+        async function updateDepositTotals(amount, token, network, txHash) {
+            await saveDepositToSupabase(amount, token, network, txHash);
+        }
+        
+        // Reset deposit totals (local display only - doesn't delete from DB)
+        function resetDepositTotals() {
+            if (confirm('This will clear the local display. Database records will be preserved. Continue?')) {
+                depositTotals = {
+                    byToken: { USDC: 0, USDT: 0 },
+                    byNetwork: {
+                        ethereum: { USDC: 0, USDT: 0, total: 0 },
+                        arbitrum: { USDC: 0, USDT: 0, total: 0 },
+                        base: { USDC: 0, USDT: 0, total: 0 },
+                        solana: { USDC: 0, USDT: 0, total: 0 }
+                    },
+                    totalUSD: 0,
+                    depositCount: 0,
+                    history: []
+                };
+                localStorage.removeItem(`cryptoDeposits_${currentAddress}`);
+                updateDepositTotalsDisplay();
+                
+                // Offer to reload from database
+                if (supabase && confirm('Reload your deposit history from the database?')) {
+                    loadDepositTotals();
+                }
+            }
+        }
+        
+        // Update the deposit totals display
+        function updateDepositTotalsDisplay() {
+            const container = document.getElementById('depositTotalsContainer');
+            const totalsSection = document.getElementById('depositTotals');
+            
+            if (depositTotals.depositCount === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            
+            // Build the display HTML
+            let html = `
+                <div class="totals-summary">
+                    <div class="total-main">
+                        <span class="total-label">Total Deposited</span>
+                        <span class="total-value">$${formatNumber(depositTotals.totalUSD)}</span>
+                    </div>
+                    <div class="total-count">${depositTotals.depositCount} deposit${depositTotals.depositCount !== 1 ? 's' : ''}</div>
+                    <div class="sync-status">${supabase ? '☁️ Synced to cloud' : '💾 Local storage'}</div>
+                </div>
+                
+                <div class="totals-breakdown">
+                    <div class="breakdown-section">
+                        <h5>By Token</h5>
+                        <div class="breakdown-item">
+                            <span>USDC</span>
+                            <span>${formatNumber(depositTotals.byToken.USDC)} USDC</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>USDT</span>
+                            <span>${formatNumber(depositTotals.byToken.USDT)} USDT</span>
+                        </div>
+                    </div>
+                    
+                    <div class="breakdown-section">
+                        <h5>By Network</h5>
+            `;
+            
+            // Add network breakdowns
+            for (const [network, data] of Object.entries(depositTotals.byNetwork)) {
+                const networkTotal = data.total || (data.USDC + data.USDT) || 0;
+                if (networkTotal > 0) {
+                    html += `
+                        <div class="breakdown-item">
+                            <span>${NETWORKS[network]?.chainName || network}</span>
+                            <span>$${formatNumber(networkTotal)}</span>
+                        </div>
+                    `;
+                }
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            // Add recent history
+            if (depositTotals.history && depositTotals.history.length > 0) {
+                html += `
+                    <div class="deposit-history-section">
+                        <h5>Recent Deposits</h5>
+                        <div class="deposit-history-list">
+                `;
+                
+                depositTotals.history.slice(0, 5).forEach(dep => {
+                    const date = new Date(dep.created_at).toLocaleDateString();
+                    html += `
+                        <div class="history-item">
+                            <span>${dep.amount} ${dep.token}</span>
+                            <span class="history-network">${dep.network}</span>
+                            <span class="history-date">${date}</span>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                <div class="totals-actions">
+                    <button class="refresh-btn" onclick="loadDepositTotals()">↻ Refresh</button>
+                    <button class="reset-totals-btn" onclick="resetDepositTotals()">Reset Display</button>
+                </div>
+            `;
+            
+            totalsSection.innerHTML = html;
+        }
+        
+        // Format number with commas and 2 decimal places
+        function formatNumber(num) {
+            return num.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Your deposit addresses
+        const DEPOSIT_ADDRESSES = {
+            ethereum: '0x0648B7CBb8C4424f6fAa17714d415106b12396eE',
+            arbitrum: '0x0648B7CBb8C4424f6fAa17714d415106b12396eE',
+            base: '0x0648B7CBb8C4424f6fAa17714d415106b12396eE',
+            solana: 'xEPGhfFzud5jKJrMmvzqwLhgMqz3KTjoJ3bPQB6mtKr'
+        };
+
+        // Token contracts for EVM chains
+        const TOKEN_CONTRACTS = {
+            ethereum: {
+                USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+                USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+            },
+            arbitrum: {
+                USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
+                USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
+            },
+            base: {
+                USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                USDT: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb'
+            }
+        };
+
+        // Solana token mint addresses
+        const SOLANA_TOKENS = {
+            USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+            USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
+        };
+
+        // Token decimals
+        const TOKEN_DECIMALS = {
+            USDC: 6,
+            USDT: 6
+        };
+
+        // Network configurations
+        const NETWORKS = {
+            ethereum: { 
+                chainId: '0x1', 
+                chainName: 'Ethereum Mainnet',
+                rpcUrls: ['https://mainnet.infura.io/v3/'],
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://etherscan.io']
+            },
+            arbitrum: { 
+                chainId: '0xa4b1', 
+                chainName: 'Arbitrum One',
+                rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://arbiscan.io']
+            },
+            base: { 
+                chainId: '0x2105', 
+                chainName: 'Base',
+                rpcUrls: ['https://mainnet.base.org'],
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://basescan.org']
+            },
+            solana: {
+                chainName: 'Solana Mainnet',
+                blockExplorerUrls: ['https://solscan.io'],
+                rpcUrl: 'https://api.mainnet-beta.solana.com'
+            }
+        };
+
+        // Initialize Solana connection
+        function initSolanaConnection() {
+            if (!solanaConnection && window.solanaWeb3) {
+                solanaConnection = new solanaWeb3.Connection(
+                    NETWORKS.solana.rpcUrl,
+                    'confirmed'
+                );
+                debugLog('Solana connection initialized');
+            }
+            return solanaConnection;
+        }
+
+        // Utility functions
+        function abbreviateAddress(address) {
+            if (!address) return '';
+            return address.slice(0, 6) + '...' + address.slice(-4);
+        }
+
+        function setMaxAmount() {
+            document.getElementById('amount').value = currentTokenBalance;
+            updateDepositButton();
+        }
+
+        function handleTopChainChange() {
+            const selectedChain = document.getElementById('topChainSelect').value;
+            debugLog(`Chain selected: ${selectedChain}`);
+            
+            if (selectedChain) {
+                updateDepositAddress();
+                if (currentAddress) {
+                    checkBalances();
+                    checkTokenBalance();
+                }
+            }
+            updateDepositButton();
+        }
+
+        function toggleWalletDropdown() {
+            const dropdown = document.getElementById('walletDropdown');
+            dropdown.classList.toggle('show');
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.top-controls')) {
+                    dropdown.classList.remove('show');
+                }
+            }, { once: true });
+        }
+
+        function debugLog(message) {
+            console.log('[DEBUG]', message);
+            
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'debug-notification';
+            notification.textContent = message;
+            
+            // Add to notifications container
+            const container = document.getElementById('debugNotifications');
+            container.appendChild(notification);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+            
+            // Keep only last 5 notifications
+            const notifications = container.querySelectorAll('.debug-notification');
+            if (notifications.length > 5) {
+                notifications[0].remove();
+            }
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.innerHTML = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            debugLog(`Status: ${type} - ${message}`);
+            
+            if (type !== 'error') {
+                setTimeout(() => status.style.display = 'none', 10000);
+            }
+        }
+
+        function addToTransactionLog(txData) {
+            transactionHistory.unshift(txData);
+            updateTransactionDisplay();
+            document.getElementById('transactionLog').style.display = 'block';
+        }
+
+        function updateTransactionDisplay() {
+            const transactionList = document.getElementById('transactionList');
+            transactionList.innerHTML = transactionHistory.slice(0, 10).map(tx => `
+                <div class="transaction-item">
+                    <div><strong>${tx.type}:</strong> ${tx.amount} ${tx.token} on ${tx.network}</div>
+                    <div><strong>Status:</strong> ${tx.status}</div>
+                    <div><strong>TX Hash:</strong> <span class="tx-hash" onclick="openExplorer('${tx.hash}', '${tx.network}')">${tx.hash}</span></div>
+                    <div><strong>Time:</strong> ${new Date(tx.timestamp).toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function openExplorer(txHash, network) {
+            const explorerUrl = NETWORKS[network].blockExplorerUrls[0];
+            window.open(`${explorerUrl}/tx/${txHash}`, '_blank');
+        }
+
+        // Get or create Associated Token Account address
+        async function getAssociatedTokenAddress(mint, owner) {
+            const mintPubkey = new solanaWeb3.PublicKey(mint);
+            const ownerPubkey = new solanaWeb3.PublicKey(owner);
+            
+            const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+            const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+            
+            const [address] = await solanaWeb3.PublicKey.findProgramAddress(
+                [
+                    ownerPubkey.toBuffer(),
+                    TOKEN_PROGRAM_ID.toBuffer(),
+                    mintPubkey.toBuffer(),
+                ],
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            );
+            
+            return address;
+        }
+
+        // Check Solana SPL token balance
+        async function checkSolanaTokenBalance(tokenMint, ownerAddress) {
+            try {
+                const connection = initSolanaConnection();
+                if (!connection) {
+                    throw new Error('Solana connection not available');
+                }
+
+                const ownerPubkey = new solanaWeb3.PublicKey(ownerAddress);
+                const mintPubkey = new solanaWeb3.PublicKey(tokenMint);
+                
+                // Get the associated token account
+                const ataAddress = await getAssociatedTokenAddress(tokenMint, ownerAddress);
+                
+                debugLog(`Checking ATA: ${ataAddress.toBase58()}`);
+                
+                // Get account info
+                const accountInfo = await connection.getAccountInfo(ataAddress);
+                
+                if (!accountInfo) {
+                    debugLog('Token account does not exist');
+                    return 0;
+                }
+                
+                // Parse token account data
+                const tokenBalance = await connection.getTokenAccountBalance(ataAddress);
+                const balance = parseFloat(tokenBalance.value.uiAmount) || 0;
+                
+                debugLog(`Solana token balance: ${balance}`);
+                return balance;
+                
+            } catch (error) {
+                debugLog(`Error checking Solana balance: ${error.message}`);
+                return 0;
+            }
+        }
+
+        // Check specific token balance
+        async function checkTokenBalance() {
+            if (!currentProvider || !currentAddress) return;
+            
+            const network = document.getElementById('topChainSelect').value;
+            const token = document.getElementById('tokenSelect').value;
+            
+            if (!network || !token) {
+                document.getElementById('tokenBalanceDisplay').textContent = 'Balance: --';
+                document.getElementById('maxBtn').style.display = 'none';
+                return;
+            }
+            
+            try {
+                if (network === 'solana') {
+                    if (currentWallet !== 'Phantom') {
+                        document.getElementById('tokenBalanceDisplay').textContent = 'Balance: Connect Phantom';
+                        document.getElementById('maxBtn').style.display = 'none';
+                        return;
+                    }
+                    
+                    const tokenMint = SOLANA_TOKENS[token];
+                    const balance = await checkSolanaTokenBalance(tokenMint, currentAddress);
+                    currentTokenBalance = balance;
+                    
+                    document.getElementById('tokenBalanceDisplay').textContent = `Balance: ${balance.toFixed(2)} ${token}`;
+                    document.getElementById('maxBtn').style.display = balance > 0 ? 'inline-block' : 'none';
+                    
+                } else {
+                    // Check EVM token balance
+                    const tokenAddress = TOKEN_CONTRACTS[network][token];
+                    if (!tokenAddress) {
+                        document.getElementById('tokenBalanceDisplay').textContent = 'Balance: N/A';
+                        return;
+                    }
+                    
+                    const decimals = 6;
+                    const balanceData = '0x70a08231' + currentAddress.slice(2).padStart(64, '0');
+                    
+                    const balance = await currentProvider.request({
+                        method: 'eth_call',
+                        params: [{
+                            to: tokenAddress,
+                            data: balanceData
+                        }, 'latest']
+                    });
+                    
+                    const tokenAmount = parseInt(balance, 16) / Math.pow(10, decimals);
+                    currentTokenBalance = tokenAmount;
+                    
+                    document.getElementById('tokenBalanceDisplay').textContent = `Balance: ${tokenAmount.toFixed(2)} ${token}`;
+                    document.getElementById('maxBtn').style.display = tokenAmount > 0 ? 'inline-block' : 'none';
+                    
+                    debugLog(`${token} Balance on ${network}: ${tokenAmount}`);
+                }
+            } catch (error) {
+                debugLog(`Error checking token balance: ${error.message}`);
+                document.getElementById('tokenBalanceDisplay').textContent = 'Balance: Error';
+            }
+        }
+
+        // Check wallet balances (simplified - mainly for internal use)
+        async function checkBalances() {
+            if (!currentProvider || !currentAddress) return;
+            
+            try {
+                debugLog('Refreshing balances...');
+                checkTokenBalance();
+            } catch (error) {
+                debugLog(`Error checking balances: ${error.message}`);
+            }
+        }
+
+        function updateDepositAddress() {
+            const networkSelect = document.getElementById('topChainSelect');
+            const network = networkSelect.value;
+            const depositAddressEl = document.getElementById('depositAddress');
+            const depositForm = document.getElementById('depositForm');
+            const networkInfo = document.getElementById('networkInfo');
+            const networkInfoText = document.getElementById('networkInfoText');
+            
+            if (network && DEPOSIT_ADDRESSES[network]) {
+                depositAddressEl.textContent = DEPOSIT_ADDRESSES[network];
+                depositForm.classList.add('active');
+                networkInfo.style.display = 'block';
+                networkInfoText.textContent = `Network: ${NETWORKS[network].chainName}`;
+                debugLog(`Deposit address updated for ${network}: ${DEPOSIT_ADDRESSES[network]}`);
+            } else {
+                depositAddressEl.textContent = 'Select a chain to see deposit address';
+                depositForm.classList.remove('active');
+                networkInfo.style.display = 'none';
+            }
+        }
+
+        function updateWalletInfo(walletName, address) {
+            const walletConnectBtn = document.getElementById('walletConnectBtn');
+            const walletConnectText = document.getElementById('walletConnectText');
+            const walletConnectIcon = document.getElementById('walletConnectIcon');
+            
+            walletConnectBtn.classList.add('connected');
+            walletConnectText.textContent = `${walletName}: ${abbreviateAddress(address)}`;
+            walletConnectIcon.textContent = '✓';
+            
+            // Close dropdown
+            document.getElementById('walletDropdown').classList.remove('show');
+            
+            // Update deposit button state
+            updateDepositButton();
+            
+            // Update network info
+            updateNetworkInfo();
+            
+            // Check balances
+            checkBalances();
+            checkTokenBalance();
+            
+            // Load deposit history from Supabase/localStorage
+            loadDepositTotals();
+        }
+
+        async function updateNetworkInfo() {
+            if (!currentProvider || !currentAddress) return;
+            
+            try {
+                if (currentWallet === 'Phantom') {
+                    // Phantom is Solana only
+                    debugLog('Connected to Solana via Phantom');
+                } else {
+                    // EVM wallet
+                    const chainId = await currentProvider.request({ method: 'eth_chainId' });
+                    currentChainId = chainId;
+                    
+                    const networkName = Object.entries(NETWORKS).find(([key, val]) => val.chainId === chainId)?.[0] || 'Unknown';
+                    debugLog(`Connected to chain: ${chainId} (${networkName})`);
+                }
+            } catch (error) {
+                debugLog(`Error getting network info: ${error.message}`);
+            }
+        }
+
+        function updateDepositButton() {
+            const depositBtn = document.querySelector('.deposit-btn');
+            const networkSelect = document.getElementById('topChainSelect');
+            const tokenSelect = document.getElementById('tokenSelect');
+            const amount = document.getElementById('amount');
+            
+            const isValid = currentWallet && networkSelect.value && tokenSelect.value && amount.value && parseFloat(amount.value) > 0;
+            depositBtn.disabled = !isValid;
+        }
+
+        // Switch network if needed (EVM only)
+        async function switchToNetwork(networkKey) {
+            if (networkKey === 'solana') return true; // Solana doesn't need network switching
+            
+            const network = NETWORKS[networkKey];
+            
+            try {
+                debugLog(`Attempting to switch to ${networkKey} (${network.chainId})`);
+                await currentProvider.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: network.chainId }]
+                });
+                await updateNetworkInfo();
+                debugLog(`Successfully switched to ${networkKey}`);
+                return true;
+            } catch (switchError) {
+                debugLog(`Switch error: ${switchError.message}`);
+                
+                if (switchError.code === 4902) {
+                    try {
+                        debugLog(`Network not found, attempting to add ${networkKey}`);
+                        await currentProvider.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [network]
+                        });
+                        await updateNetworkInfo();
+                        debugLog(`Successfully added and switched to ${networkKey}`);
+                        return true;
+                    } catch (addError) {
+                        debugLog(`Error adding network: ${addError.message}`);
+                        return false;
+                    }
+                }
+                return false;
+            }
+        }
+
+        // Enhanced ERC20 transfer function
+        async function createERC20Transaction(tokenAddress, toAddress, amount, decimals) {
+            const methodId = '0xa9059cbb';
+            const cleanAddress = toAddress.toLowerCase().replace('0x', '');
+            const paddedAddress = cleanAddress.padStart(64, '0');
+            const amountInUnits = Math.floor(amount * Math.pow(10, decimals));
+            const paddedAmount = amountInUnits.toString(16).padStart(64, '0');
+            const data = methodId + paddedAddress + paddedAmount;
+            
+            debugLog(`ERC20 Transaction Data:`);
+            debugLog(`- Method ID: ${methodId}`);
+            debugLog(`- To Address: ${toAddress} -> ${paddedAddress}`);
+            debugLog(`- Amount: ${amount} -> ${amountInUnits} -> ${paddedAmount}`);
+            debugLog(`- Final Data: ${data}`);
+            
+            return {
+                to: tokenAddress,
+                from: currentAddress,
+                data: data,
+                value: '0x0'
+            };
+        }
+
+        // Create Solana SPL Token Transfer Transaction
+        async function createSolanaTokenTransfer(token, amount) {
+            debugLog(`Creating Solana SPL token transfer for ${amount} ${token}`);
+            
+            const connection = initSolanaConnection();
+            if (!connection) {
+                throw new Error('Solana connection not initialized');
+            }
+            
+            const mintAddress = SOLANA_TOKENS[token];
+            const recipientAddress = DEPOSIT_ADDRESSES.solana;
+            const decimals = TOKEN_DECIMALS[token];
+            
+            debugLog(`Mint: ${mintAddress}`);
+            debugLog(`Recipient: ${recipientAddress}`);
+            debugLog(`Decimals: ${decimals}`);
+            
+            // Create PublicKey objects
+            const mintPubkey = new solanaWeb3.PublicKey(mintAddress);
+            const senderPubkey = new solanaWeb3.PublicKey(currentAddress);
+            const recipientPubkey = new solanaWeb3.PublicKey(recipientAddress);
+            
+            // Token Program ID
+            const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+            const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+            
+            // Get sender's Associated Token Account
+            const senderATA = await getAssociatedTokenAddress(mintAddress, currentAddress);
+            debugLog(`Sender ATA: ${senderATA.toBase58()}`);
+            
+            // Get recipient's Associated Token Account
+            const recipientATA = await getAssociatedTokenAddress(mintAddress, recipientAddress);
+            debugLog(`Recipient ATA: ${recipientATA.toBase58()}`);
+            
+            // Check if sender's ATA exists
+            const senderATAInfo = await connection.getAccountInfo(senderATA);
+            if (!senderATAInfo) {
+                throw new Error(`You don't have a ${token} token account. Please ensure you have ${token} tokens in your wallet.`);
+            }
+            
+            // Calculate amount in smallest units
+            const amountInSmallestUnits = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+            debugLog(`Amount in smallest units: ${amountInSmallestUnits}`);
+            
+            // Create transaction
+            const transaction = new solanaWeb3.Transaction();
+            
+            // Check if recipient's ATA exists, if not, create it
+            const recipientATAInfo = await connection.getAccountInfo(recipientATA);
+            if (!recipientATAInfo) {
+                debugLog('Creating recipient ATA...');
+                
+                // Create Associated Token Account instruction
+                const createATAInstruction = createAssociatedTokenAccountInstruction(
+                    senderPubkey,           // payer
+                    recipientATA,           // associatedToken
+                    recipientPubkey,        // owner
+                    mintPubkey,             // mint
+                    TOKEN_PROGRAM_ID,
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                );
+                
+                transaction.add(createATAInstruction);
+            }
+            
+            // Create transfer instruction
+            const transferInstruction = createTransferInstruction(
+                senderATA,              // source
+                recipientATA,           // destination
+                senderPubkey,           // owner
+                amountInSmallestUnits,  // amount
+                [],                     // multiSigners
+                TOKEN_PROGRAM_ID
+            );
+            
+            transaction.add(transferInstruction);
+            
+            // Get recent blockhash
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = senderPubkey;
+            
+            debugLog(`Transaction created with blockhash: ${blockhash}`);
+            
+            return transaction;
+        }
+
+        // Helper function to create Associated Token Account instruction
+        function createAssociatedTokenAccountInstruction(
+            payer,
+            associatedToken,
+            owner,
+            mint,
+            programId,
+            associatedTokenProgramId
+        ) {
+            const keys = [
+                { pubkey: payer, isSigner: true, isWritable: true },
+                { pubkey: associatedToken, isSigner: false, isWritable: true },
+                { pubkey: owner, isSigner: false, isWritable: false },
+                { pubkey: mint, isSigner: false, isWritable: false },
+                { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+                { pubkey: programId, isSigner: false, isWritable: false },
+            ];
+            
+            return new solanaWeb3.TransactionInstruction({
+                keys,
+                programId: associatedTokenProgramId,
+                data: Buffer.from([]),
+            });
+        }
+
+        // Helper function to create SPL Token transfer instruction
+        function createTransferInstruction(
+            source,
+            destination,
+            owner,
+            amount,
+            multiSigners,
+            programId
+        ) {
+            const dataLayout = {
+                encode: (amount) => {
+                    const buffer = Buffer.alloc(9);
+                    buffer.writeUInt8(3, 0); // Transfer instruction index
+                    buffer.writeBigUInt64LE(amount, 1);
+                    return buffer;
+                }
+            };
+            
+            const keys = [
+                { pubkey: source, isSigner: false, isWritable: true },
+                { pubkey: destination, isSigner: false, isWritable: true },
+                { pubkey: owner, isSigner: true, isWritable: false },
+            ];
+            
+            // Add multi-signers if any
+            for (const signer of multiSigners) {
+                keys.push({
+                    pubkey: signer.publicKey,
+                    isSigner: true,
+                    isWritable: false,
+                });
+            }
+            
+            return new solanaWeb3.TransactionInstruction({
+                keys,
+                programId,
+                data: dataLayout.encode(amount),
+            });
+        }
+
+        // Main deposit function
+        async function depositTokens() {
+            const depositBtn = document.querySelector('.deposit-btn');
+            const originalText = depositBtn.innerHTML;
+            
+            try {
+                const network = document.getElementById('topChainSelect').value;
+                const token = document.getElementById('tokenSelect').value;
+                const amount = parseFloat(document.getElementById('amount').value);
+                const recipient = DEPOSIT_ADDRESSES[network];
+
+                debugLog(`Starting deposit: ${amount} ${token} on ${network} to ${recipient}`);
+
+                // Validate inputs
+                if (!network || !token || !amount || amount <= 0) {
+                    throw new Error('Please fill in all fields with valid values');
+                }
+
+                // Update button to show loading
+                depositBtn.innerHTML = '<div class="loading"></div> Processing...';
+                depositBtn.disabled = true;
+
+                showStatus(`Initiating ${amount} ${token} deposit to ${NETWORKS[network].chainName}...`, 'info');
+
+                let txHash;
+
+                if (network === 'solana') {
+                    // Solana SPL Token transaction
+                    if (currentWallet !== 'Phantom') {
+                        throw new Error('Please connect Phantom wallet for Solana deposits');
+                    }
+                    
+                    if (!window.solana || !window.solana.isPhantom) {
+                        throw new Error('Phantom wallet not found');
+                    }
+                    
+                    debugLog('Building Solana transaction...');
+                    
+                    // Create the transaction
+                    const transaction = await createSolanaTokenTransfer(token, amount);
+                    
+                    debugLog('Requesting signature from Phantom...');
+                    showStatus('Please approve the transaction in Phantom wallet...', 'info');
+                    
+                    // Sign and send via Phantom
+                    const { signature } = await window.solana.signAndSendTransaction(transaction);
+                    
+                    txHash = signature;
+                    debugLog(`Solana transaction sent: ${txHash}`);
+                    
+                    // Add to transaction log
+                    const txData = {
+                        type: 'Deposit',
+                        hash: txHash,
+                        amount: amount,
+                        token: token,
+                        network: network,
+                        status: 'Pending',
+                        timestamp: Date.now()
+                    };
+                    addToTransactionLog(txData);
+                    
+                    showStatus(`Solana deposit submitted! Signature: ${txHash.slice(0, 20)}...`, 'success');
+                    
+                    // Monitor Solana transaction
+                    monitorSolanaTransaction(txHash, txData);
+                    
+                } else {
+                    // EVM transaction
+                    if (currentWallet === 'Phantom') {
+                        throw new Error('Please connect MetaMask or Rabby for EVM chain deposits');
+                    }
+
+                    // Check if we need to switch networks
+                    const targetChainId = NETWORKS[network].chainId;
+                    if (currentChainId !== targetChainId) {
+                        showStatus(`Switching to ${NETWORKS[network].chainName}...`, 'info');
+                        const switched = await switchToNetwork(network);
+                        if (!switched) {
+                            throw new Error(`Failed to switch to ${NETWORKS[network].chainName}`);
+                        }
+                        currentChainId = targetChainId;
+                    }
+
+                    // ERC20 token transfer
+                    const tokenAddress = TOKEN_CONTRACTS[network][token];
+                    if (!tokenAddress) {
+                        throw new Error(`${token} not available on ${network}`);
+                    }
+                    
+                    debugLog(`Token contract address: ${tokenAddress}`);
+                    
+                    const decimals = 6; // Both USDC and USDT use 6 decimals
+                    const transactionParams = await createERC20Transaction(tokenAddress, recipient, amount, decimals);
+                    
+                    // Estimate gas for token transfer
+                    try {
+                        const gasEstimate = await currentProvider.request({
+                            method: 'eth_estimateGas',
+                            params: [transactionParams]
+                        });
+                        transactionParams.gas = gasEstimate;
+                        debugLog(`Gas estimate: ${gasEstimate}`);
+                    } catch (gasError) {
+                        debugLog(`Gas estimation failed: ${gasError.message}`);
+                        transactionParams.gas = '0x249F0'; // 150000 gas as fallback
+                    }
+
+                    debugLog(`Final transaction params: ${JSON.stringify(transactionParams)}`);
+
+                    // Send transaction
+                    txHash = await currentProvider.request({
+                        method: 'eth_sendTransaction',
+                        params: [transactionParams]
+                    });
+                    
+                    debugLog(`Transaction sent: ${txHash}`);
+
+                    // Add to transaction log
+                    const txData = {
+                        type: 'Deposit',
+                        hash: txHash,
+                        amount: amount,
+                        token: token,
+                        network: network,
+                        status: 'Pending',
+                        timestamp: Date.now()
+                    };
+                    addToTransactionLog(txData);
+
+                    showStatus(`Deposit submitted successfully! Transaction: ${txHash}`, 'success');
+                    
+                    // Monitor transaction status
+                    monitorTransaction(txHash, network, txData);
+                }
+                
+                // Clear form
+                document.getElementById('amount').value = '';
+                updateDepositButton();
+
+                // Refresh balances after a delay
+                setTimeout(() => checkBalances(), 5000);
+
+            } catch (error) {
+                debugLog(`Deposit error: ${error.message}`);
+                console.error('Full error:', error);
+                
+                if (error.code === 4001 || error.message?.includes('User rejected')) {
+                    showStatus('Transaction cancelled by user', 'error');
+                } else if (error.code === -32603) {
+                    showStatus('Insufficient funds or gas limit too low', 'error');
+                } else if (error.message.includes('insufficient funds')) {
+                    showStatus('Insufficient funds for transaction', 'error');
+                } else {
+                    showStatus(`Deposit failed: ${error.message}`, 'error');
+                }
+            } finally {
+                // Reset button
+                depositBtn.innerHTML = originalText;
+                depositBtn.disabled = false;
+                updateDepositButton();
+            }
+        }
+
+        // Monitor Solana transaction status
+        async function monitorSolanaTransaction(signature, txData) {
+            debugLog(`Monitoring Solana transaction: ${signature}`);
+            
+            const connection = initSolanaConnection();
+            if (!connection) return;
+            
+            let attempts = 0;
+            const maxAttempts = 60;
+            
+            const checkStatus = async () => {
+                try {
+                    const status = await connection.getSignatureStatus(signature);
+                    
+                    if (status && status.value) {
+                        if (status.value.err) {
+                            txData.status = 'Failed';
+                            updateTransactionDisplay();
+                            showStatus(`Solana transaction failed!`, 'error');
+                            debugLog(`Transaction failed: ${JSON.stringify(status.value.err)}`);
+                            return;
+                        }
+                        
+                        if (status.value.confirmationStatus === 'confirmed' || 
+                            status.value.confirmationStatus === 'finalized') {
+                            txData.status = 'Success';
+                            updateTransactionDisplay();
+                            showStatus(`Solana transaction confirmed!`, 'success');
+                            debugLog(`Transaction confirmed: ${status.value.confirmationStatus}`);
+                            
+                            // Update deposit totals on successful confirmation
+                            updateDepositTotals(txData.amount, txData.token, txData.network, txData.hash);
+                            
+                            setTimeout(() => checkBalances(), 2000);
+                            return;
+                        }
+                    }
+                    
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        debugLog(`Solana tx ${signature.slice(0, 8)}... still pending (${attempts}/${maxAttempts})`);
+                        setTimeout(checkStatus, 3000);
+                    } else {
+                        debugLog(`Solana transaction monitoring timeout`);
+                        txData.status = 'Unknown';
+                        updateTransactionDisplay();
+                    }
+                } catch (error) {
+                    debugLog(`Error checking Solana tx status: ${error.message}`);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        setTimeout(checkStatus, 3000);
+                    }
+                }
+            };
+            
+            setTimeout(checkStatus, 3000);
+        }
+
+        // Monitor transaction status (EVM only)
+        async function monitorTransaction(txHash, network, txData) {
+            debugLog(`Starting transaction monitoring for ${txHash}`);
+            let attempts = 0;
+            const maxAttempts = 60;
+            
+            const checkStatus = async () => {
+                try {
+                    const receipt = await currentProvider.request({
+                        method: 'eth_getTransactionReceipt',
+                        params: [txHash]
+                    });
+                    
+                    if (receipt) {
+                        const status = receipt.status === '0x1' ? 'Success' : 'Failed';
+                        txData.status = status;
+                        updateTransactionDisplay();
+                        
+                        debugLog(`Transaction ${txHash} status: ${status}`);
+                        debugLog(`Receipt: ${JSON.stringify(receipt)}`);
+                        
+                        if (status === 'Success') {
+                            showStatus(`Transaction confirmed! ${txHash}`, 'success');
+                            
+                            // Update deposit totals on successful confirmation
+                            updateDepositTotals(txData.amount, txData.token, txData.network, txData.hash);
+                            
+                            setTimeout(() => checkBalances(), 2000);
+                        } else {
+                            showStatus(`Transaction failed! ${txHash}`, 'error');
+                        }
+                        return;
+                    }
+                    
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        debugLog(`Transaction ${txHash} still pending... (attempt ${attempts}/${maxAttempts})`);
+                        setTimeout(checkStatus, 5000);
+                    } else {
+                        debugLog(`Transaction monitoring timeout for ${txHash}`);
+                    }
+                } catch (error) {
+                    debugLog(`Error checking transaction status: ${error.message}`);
+                }
+            };
+            
+            setTimeout(checkStatus, 5000);
+        }
+
+        // Wallet connections
+        async function connectMetaMask() {
+            try {
+                if (!window.ethereum?.isMetaMask) {
+                    throw new Error('MetaMask not installed. Please install MetaMask and refresh the page.');
+                }
+                
+                debugLog('Attempting to connect to MetaMask...');
+                
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found. Please unlock MetaMask and try again.');
+                }
+                
+                currentWallet = 'MetaMask';
+                currentProvider = window.ethereum;
+                currentAddress = accounts[0];
+                
+                debugLog(`Connected to MetaMask: ${currentAddress}`);
+                
+                updateWalletInfo('MetaMask', currentAddress);
+                showStatus('Successfully connected to MetaMask!', 'success');
+                
+                // Listen for account changes
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+                window.ethereum.on('chainChanged', handleChainChanged);
+                
+            } catch (error) {
+                debugLog(`MetaMask connection error: ${error.message}`);
+                showStatus(`Failed to connect MetaMask: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectPhantom() {
+            try {
+                if (!window.solana?.isPhantom) {
+                    throw new Error('Phantom wallet not installed. Please install Phantom and refresh the page.');
+                }
+                
+                debugLog('Attempting to connect to Phantom...');
+                
+                const response = await window.solana.connect();
+                
+                currentWallet = 'Phantom';
+                currentProvider = window.solana;
+                currentAddress = response.publicKey.toString();
+                
+                // Initialize Solana connection
+                initSolanaConnection();
+                
+                debugLog(`Connected to Phantom: ${currentAddress}`);
+                
+                updateWalletInfo('Phantom', currentAddress);
+                showStatus('Successfully connected to Phantom!', 'success');
+                
+                // Auto-select Solana chain when Phantom is connected
+                document.getElementById('topChainSelect').value = 'solana';
+                handleTopChainChange();
+                
+            } catch (error) {
+                debugLog(`Phantom connection error: ${error.message}`);
+                showStatus(`Failed to connect Phantom: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectRabby() {
+            try {
+                if (!window.ethereum) {
+                    throw new Error('Rabby wallet not installed. Please install Rabby and refresh the page.');
+                }
+                
+                debugLog('Attempting to connect to Rabby...');
+                
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found. Please unlock Rabby and try again.');
+                }
+                
+                currentWallet = 'Rabby';
+                currentProvider = window.ethereum;
+                currentAddress = accounts[0];
+                
+                debugLog(`Connected to Rabby: ${currentAddress}`);
+                
+                updateWalletInfo('Rabby', currentAddress);
+                showStatus('Successfully connected to Rabby!', 'success');
+                
+                // Listen for account changes
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+                window.ethereum.on('chainChanged', handleChainChanged);
+                
+            } catch (error) {
+                debugLog(`Rabby connection error: ${error.message}`);
+                showStatus(`Failed to connect Rabby: ${error.message}`, 'error');
+            }
+        }
+
+        // Handle wallet events
+        function handleAccountsChanged(accounts) {
+            debugLog(`Account changed: ${accounts[0]}`);
+            if (accounts.length === 0) {
+                location.reload();
+            } else if (accounts[0] !== currentAddress) {
+                currentAddress = accounts[0];
+                updateWalletInfo(currentWallet, currentAddress);
+                showStatus('Account changed, please verify the new address', 'info');
+            }
+        }
+
+        function handleChainChanged(chainId) {
+            debugLog(`Chain changed: ${chainId}`);
+            location.reload();
+        }
+
+        // Event listeners
+        document.getElementById('topChainSelect').addEventListener('change', handleTopChainChange);
+        document.getElementById('tokenSelect').addEventListener('change', () => {
+            updateDepositButton();
+            checkTokenBalance();
+        });
+        document.getElementById('amount').addEventListener('input', updateDepositButton);
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDepositAddress();
+            showStatus('Connect your wallet to start depositing!', 'info');
+            debugLog('Page initialized');
+            
+            // Initialize Supabase
+            const supabaseConnected = initSupabase();
+            
+            // Add Supabase status indicator
+            const statusIndicator = document.createElement('div');
+            statusIndicator.className = `supabase-status ${supabaseConnected ? 'connected' : 'disconnected'}`;
+            statusIndicator.textContent = supabaseConnected ? '☁️ Database Connected' : '⚠️ Local Mode';
+            document.body.appendChild(statusIndicator);
+            
+            // Check if Solana Web3 is loaded
+            if (window.solanaWeb3) {
+                debugLog('Solana Web3.js loaded successfully');
+            } else {
+                debugLog('Warning: Solana Web3.js not loaded');
+            }
+        });
+    </script>
+</body>
+</html>
