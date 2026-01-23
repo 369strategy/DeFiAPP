@@ -477,36 +477,50 @@
         // Connect MetaMask
         document.getElementById('connectMetaMask').addEventListener('click', async function() {
             try {
-                if (!window.ethereum) {
-                    throw new Error('MetaMask not installed');
+                let provider = null;
+                
+                // Check if MetaMask is available
+                if (window.ethereum?.providers) {
+                    // Multiple providers - find MetaMask
+                    provider = window.ethereum.providers.find(p => p.isMetaMask && !p.isPhantom);
+                } else if (window.ethereum?.isMetaMask && !window.ethereum?.isPhantom) {
+                    provider = window.ethereum;
                 }
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (!provider) {
+                    throw new Error('MetaMask not found. Please install MetaMask.');
+                }
+                
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
                 if (accounts.length === 0) throw new Error('No accounts found');
                 
                 currentWallet = 'MetaMask';
-                currentProvider = window.ethereum;
+                currentProvider = provider;
                 currentAddress = accounts[0];
                 
                 updateWalletUI();
                 showStatus('Connected to MetaMask!', 'success');
                 
-                window.ethereum.on('accountsChanged', handleAccountChange);
-                window.ethereum.on('chainChanged', () => location.reload());
+                provider.on('accountsChanged', handleAccountChange);
+                provider.on('chainChanged', () => location.reload());
             } catch (err) {
                 showStatus('MetaMask error: ' + err.message, 'error');
             }
         });
 
-        // Connect Phantom
+        // Connect Phantom (Solana only)
         document.getElementById('connectPhantom').addEventListener('click', async function() {
             try {
-                if (!window.solana || !window.solana.isPhantom) {
-                    throw new Error('Phantom not installed');
+                const phantom = window.phantom?.solana || window.solana;
+                
+                if (!phantom || !phantom.isPhantom) {
+                    throw new Error('Phantom not found. Please install Phantom.');
                 }
-                const response = await window.solana.connect();
+                
+                const response = await phantom.connect();
                 
                 currentWallet = 'Phantom';
-                currentProvider = window.solana;
+                currentProvider = phantom;
                 currentAddress = response.publicKey.toString();
                 
                 topChainSelect.value = 'solana';
@@ -522,21 +536,32 @@
         // Connect Rabby
         document.getElementById('connectRabby').addEventListener('click', async function() {
             try {
-                if (!window.ethereum) {
-                    throw new Error('Rabby not installed');
+                let provider = null;
+                
+                // Check if Rabby is available
+                if (window.ethereum?.providers) {
+                    // Multiple providers - find Rabby
+                    provider = window.ethereum.providers.find(p => p.isRabby);
+                } else if (window.ethereum?.isRabby) {
+                    provider = window.ethereum;
                 }
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (!provider) {
+                    throw new Error('Rabby not found. Please install Rabby.');
+                }
+                
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
                 if (accounts.length === 0) throw new Error('No accounts found');
                 
                 currentWallet = 'Rabby';
-                currentProvider = window.ethereum;
+                currentProvider = provider;
                 currentAddress = accounts[0];
                 
                 updateWalletUI();
                 showStatus('Connected to Rabby!', 'success');
                 
-                window.ethereum.on('accountsChanged', handleAccountChange);
-                window.ethereum.on('chainChanged', () => location.reload());
+                provider.on('accountsChanged', handleAccountChange);
+                provider.on('chainChanged', () => location.reload());
             } catch (err) {
                 showStatus('Rabby error: ' + err.message, 'error');
             }
@@ -808,3 +833,4 @@
     </script>
 </body>
 </html>
+
