@@ -4,421 +4,598 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0a0a;
+            color: #ffffff;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
         }
+
+        .hero-heading-center {
+            padding: 60px 20px 40px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .centered-heading {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 32px;
+        }
+
+        .margin-bottom-32px {
+            margin-bottom: 32px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .stat-block {
+            background: linear-gradient(145deg, #1a1a1a 0%, #0f0f0f 100%);
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 24px 40px;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
         .top-controls {
             position: fixed;
             top: 20px;
             right: 20px;
             display: flex;
-            gap: 10px;
+            gap: 12px;
             z-index: 1001;
         }
+
         .chain-select {
-            padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.85rem;
+            padding: 12px 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            font-size: 0.9rem;
             font-weight: 500;
+            color: #fff;
             cursor: pointer;
-            min-width: 120px;
+            min-width: 140px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
         }
+
+        .chain-select:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
         .wallet-connect-btn {
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #4a5568, #2d3748);
-            color: white;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #000;
             border: none;
-            border-radius: 8px;
-            font-size: 0.85rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s ease;
         }
+
         .wallet-connect-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
         }
+
         .wallet-connect-btn.connected {
-            background: linear-gradient(135deg, #718096, #4a5568);
+            background: linear-gradient(135deg, #333 0%, #1a1a1a 100%);
+            color: #00ff88;
+            border: 1px solid #00ff88;
         }
+
         .disconnect-btn {
-            padding: 6px 10px;
-            background: #e53e3e;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            padding: 8px 12px;
+            background: transparent;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            font-size: 0.8rem;
             cursor: pointer;
             margin-left: 8px;
+            transition: all 0.2s;
         }
+
         .disconnect-btn:hover {
-            background: #c53030;
+            background: #ff4444;
+            color: #000;
         }
+
         .wallet-dropdown {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 8px);
             right: 0;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            min-width: 200px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            min-width: 220px;
             display: none;
             z-index: 1002;
+            overflow: hidden;
         }
+
         .wallet-dropdown.show { display: block; }
+
         .wallet-option {
-            padding: 12px 16px;
+            padding: 14px 18px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid #f1f5f9;
+            gap: 12px;
+            border-bottom: 1px solid #222;
+            transition: background 0.2s;
         }
-        .wallet-option:hover { background-color: #f8fafc; }
+
+        .wallet-option:hover { background: #222; }
         .wallet-option:last-child { border-bottom: none; }
+
         .wallet-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #718096, #4a5568);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
         }
-        .container {
-            background: white;
+
+        .main-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0 20px 60px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, #1a1a1a 0%, #0f0f0f 100%);
+            border: 1px solid #222;
             border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 700px;
-            width: 100%;
+            padding: 28px;
+            margin-bottom: 20px;
         }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: #333; font-size: 2rem; margin-bottom: 8px; }
-        .header p { color: #666; font-size: 1rem; }
-        .section-title {
-            font-size: 1.2rem;
-            color: #333;
-            margin-bottom: 15px;
-            text-align: center;
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            background: #0f0f0f;
+            border-radius: 12px;
+            padding: 4px;
         }
-        .deposit-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e2e8f0;
+
+        .tab {
+            flex: 1;
+            padding: 14px;
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.2s;
         }
-        .deposit-form { display: none; }
-        .deposit-form.active { display: block; }
+
+        .tab:hover { color: #999; }
+
+        .tab.active {
+            color: #fff;
+            background: #1a1a1a;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         .form-row {
             display: flex;
-            gap: 10px;
-            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
         }
-        .form-group { margin-bottom: 15px; flex: 1; }
-        .form-group.token-group { flex: 0 0 130px; }
+
+        .form-group { 
+            flex: 1;
+            margin-bottom: 16px;
+        }
+
+        .form-group.token-group { flex: 0 0 120px; }
+
         .form-group label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-            font-size: 0.9rem;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #888;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
+
         .form-group input, .form-group select {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.95rem;
+            padding: 14px 16px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 12px;
+            font-size: 1rem;
+            color: #fff;
+            transition: border-color 0.2s;
         }
+
         .form-group input:focus, .form-group select:focus {
             outline: none;
-            border-color: #4a5568;
+            border-color: #00ff88;
         }
+
+        .form-group input::placeholder {
+            color: #444;
+        }
+
         .token-balance {
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 0.85rem;
             color: #666;
-            margin-top: -10px;
-            margin-bottom: 15px;
+            margin-top: -8px;
+            margin-bottom: 16px;
         }
+
         .max-btn {
-            background: #e2e8f0;
+            background: #00ff88;
             border: none;
-            padding: 4px 12px;
-            border-radius: 5px;
+            padding: 6px 14px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #2d3748;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #000;
+            text-transform: uppercase;
             display: none;
+            transition: all 0.2s;
         }
-        .max-btn:hover { background: #cbd5e0; }
+
+        .max-btn:hover {
+            background: #00cc6a;
+        }
+
         .deposit-info {
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 12px;
-            margin: 12px 0;
+            background: #0f0f0f;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
         }
-        .deposit-address {
-            font-family: monospace;
-            background: white;
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #cbd5e1;
-            word-break: break-all;
+
+        .deposit-info p {
+            color: #666;
             font-size: 0.85rem;
+            margin-bottom: 8px;
         }
-        .network-info {
-            background: #e2e8f0;
-            border: 1px solid #718096;
+
+        .deposit-address {
+            font-family: 'SF Mono', Monaco, monospace;
+            background: #1a1a1a;
+            padding: 12px;
             border-radius: 8px;
-            padding: 8px;
-            margin: 8px 0;
+            border: 1px solid #333;
+            word-break: break-all;
+            font-size: 0.8rem;
+            color: #00ff88;
+        }
+
+        .network-info {
+            background: linear-gradient(135deg, #00ff8820, #00cc6a10);
+            border: 1px solid #00ff8840;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 12px;
             text-align: center;
-            color: #1a202c;
-            font-weight: 600;
+            color: #00ff88;
+            font-weight: 500;
             font-size: 0.85rem;
             display: none;
         }
-        .deposit-btn {
+
+        .primary-btn {
             width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #4a5568, #2d3748);
-            color: white;
+            padding: 16px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #000;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             font-size: 1rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .deposit-btn:hover:not(:disabled) {
+
+        .primary-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
         }
-        .deposit-btn:disabled {
-            background: #94a3b8;
+
+        .primary-btn:disabled {
+            background: #333;
+            color: #666;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
+
+        .withdraw-btn {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
+
+        .withdraw-btn:hover:not(:disabled) {
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
         .status {
-            padding: 12px;
-            border-radius: 8px;
-            margin: 12px 0;
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin: 16px 0;
             text-align: center;
-            font-weight: 600;
+            font-weight: 500;
             display: none;
             font-size: 0.9rem;
         }
-        .status.success { background: #d1fae5; color: #065f46; }
-        .status.error { background: #fee2e2; color: #991b1b; }
-        .status.info { background: #e0e7ff; color: #3730a3; }
+
+        .status.success { 
+            background: #00ff8815; 
+            color: #00ff88; 
+            border: 1px solid #00ff8840;
+        }
+        .status.error { 
+            background: #ff444415; 
+            color: #ff4444;
+            border: 1px solid #ff444440;
+        }
+        .status.info { 
+            background: #3b82f615; 
+            color: #3b82f6;
+            border: 1px solid #3b82f640;
+        }
+
         .transaction-log {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px;
-            margin: 12px 0;
+            background: #0f0f0f;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
             max-height: 250px;
             overflow-y: auto;
             display: none;
         }
-        .transaction-log h4 { font-size: 0.9rem; margin-bottom: 8px; }
+
+        .transaction-log h4 { 
+            font-size: 0.9rem; 
+            margin-bottom: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
         .transaction-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 5px;
-            padding: 8px;
-            margin: 5px 0;
+            background: #1a1a1a;
+            border: 1px solid #222;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 8px 0;
             font-size: 0.85rem;
         }
+
         .tx-hash {
-            font-family: monospace;
-            color: #4a5568;
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #00ff88;
             word-break: break-all;
             cursor: pointer;
+        }
+
+        .tx-hash:hover {
             text-decoration: underline;
         }
+
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4a5568;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #333;
+            border-top: 2px solid #00ff88;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
         .deposit-totals-container {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            border: 2px solid #cbd5e0;
-            border-radius: 12px;
-            padding: 20px;
+            background: linear-gradient(145deg, #1a1a1a 0%, #0f0f0f 100%);
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 24px;
             margin: 20px 0;
             display: none;
         }
+
         .deposit-totals-container h3 {
-            font-size: 1rem;
-            color: #2d3748;
-            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
+
         .totals-summary {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
             text-align: center;
+            padding: 20px;
+            background: #0f0f0f;
+            border-radius: 12px;
         }
+
         .total-value {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: #2d3748;
+            color: #00ff88;
         }
+
         .total-count {
-            font-size: 0.85rem;
-            color: #718096;
+            font-size: 0.9rem;
+            color: #666;
             margin-top: 8px;
         }
-        .tabs {
-            display: flex;
-            gap: 0;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        .tab {
-            flex: 1;
-            padding: 12px;
-            background: none;
-            border: none;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #718096;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.2s;
-        }
-        .tab:hover {
-            color: #4a5568;
-        }
-        .tab.active {
-            color: #2d3748;
-            border-bottom-color: #2d3748;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
+
+        /* Withdraw section */
         .withdraw-form {
-            background: #f8fafc;
-            border-radius: 10px;
-            padding: 20px;
+            background: transparent;
         }
+
         .auth-status {
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-            color: #92400e;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            background: #f59e0b15;
+            border: 1px solid #f59e0b40;
+            color: #f59e0b;
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 16px;
             font-size: 0.9rem;
         }
+
         .auth-status.verified {
-            background: #d1fae5;
-            border-color: #10b981;
-            color: #065f46;
+            background: #00ff8815;
+            border-color: #00ff8840;
+            color: #00ff88;
         }
+
         .auth-btn {
             width: 100%;
-            padding: 10px;
-            background: #f59e0b;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 15px;
-        }
-        .auth-btn:hover {
-            background: #d97706;
-        }
-        .auth-btn:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-        .withdraw-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #7c3aed, #5b21b6);
-            color: white;
+            padding: 14px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000;
             border: none;
             border-radius: 12px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
+            margin-bottom: 16px;
+            transition: all 0.2s;
         }
-        .withdraw-btn:hover:not(:disabled) {
+
+        .auth-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3);
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
         }
-        .withdraw-btn:disabled {
-            background: #94a3b8;
+
+        .auth-btn:disabled {
+            background: #333;
+            color: #666;
             cursor: not-allowed;
         }
+
         .withdraw-requests {
             margin-top: 20px;
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 15px;
+            background: #0f0f0f;
+            border-radius: 12px;
+            padding: 16px;
         }
+
         .withdraw-requests h4 {
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            color: #4a5568;
-        }
-        .request-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 8px;
             font-size: 0.85rem;
+            margin-bottom: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
+
+        .request-item {
+            background: #1a1a1a;
+            border: 1px solid #222;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
         .request-status {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
+
         .request-status.pending {
-            background: #fef3c7;
-            color: #92400e;
+            background: #f59e0b20;
+            color: #f59e0b;
         }
+
         .request-status.approved {
-            background: #d1fae5;
-            color: #065f46;
+            background: #00ff8820;
+            color: #00ff88;
         }
+
         .request-status.rejected {
-            background: #fee2e2;
-            color: #991b1b;
+            background: #ff444420;
+            color: #ff4444;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f0f0f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
         }
     </style>
 </head>
@@ -448,30 +625,41 @@
                 </div>
                 <div class="wallet-option" id="connectRabby">
                     <div class="wallet-icon"></div>
-                    <span>Rabby</span>
+                    <span>Rabby / Other</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="container">
-        <div class="header">
-            <h1>Crypto Platform</h1>
-            <p>Deposit & Withdraw USDC & USDT Securely</p>
+    <section class="hero-heading-center">
+        <div class="container">
+            <h1 class="centered-heading">Portfolio</h1>
         </div>
-
-        <div class="tabs">
-            <button class="tab active" id="depositTab">Deposit</button>
-            <button class="tab" id="withdrawTab">Withdraw</button>
+        <div class="stats-row">
+            <div class="stat-block">
+                <div class="stat-label">Total Deposited</div>
+                <div class="stat-value" id="heroTotalDeposited">$0.00</div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">Deposits</div>
+                <div class="stat-value" id="heroDepositCount">0</div>
+            </div>
         </div>
+    </section>
 
-        <!-- DEPOSIT TAB -->
-        <div class="tab-content active" id="depositContent">
-            <div class="deposit-section" style="border-top: none; padding-top: 0;">
+    <div class="main-container">
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" id="depositTab">Deposit</button>
+                <button class="tab" id="withdrawTab">Withdraw</button>
+            </div>
+
+            <!-- DEPOSIT TAB -->
+            <div class="tab-content active" id="depositContent">
                 <div id="depositForm" class="deposit-form">
                     <div class="form-row">
                         <div class="form-group token-group">
-                            <label for="tokenSelect">Token:</label>
+                            <label for="tokenSelect">Token</label>
                             <select id="tokenSelect">
                                 <option value="">Select...</option>
                                 <option value="USDC">USDC</option>
@@ -479,8 +667,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="amount">Amount:</label>
-                            <input type="number" id="amount" placeholder="0.0" step="0.000001" min="0">
+                            <label for="amount">Amount</label>
+                            <input type="number" id="amount" placeholder="0.00" step="0.000001" min="0">
                         </div>
                     </div>
 
@@ -490,67 +678,69 @@
                     </div>
 
                     <div class="deposit-info">
-                        <p style="margin-bottom: 5px; font-size: 0.9rem;"><strong>Deposit Address:</strong></p>
-                        <p id="depositAddress" class="deposit-address">Select a chain to see deposit address</p>
+                        <p><strong>Deposit Address</strong></p>
+                        <div id="depositAddress" class="deposit-address">Select a chain to see deposit address</div>
                         <div class="network-info" id="networkInfo">
                             <span id="networkInfoText"></span>
                         </div>
                     </div>
 
-                    <button class="deposit-btn" id="depositBtn" disabled>Deposit Tokens</button>
+                    <button class="primary-btn" id="depositBtn" disabled>Deposit</button>
                 </div>
             </div>
-        </div>
 
-        <!-- WITHDRAW TAB -->
-        <div class="tab-content" id="withdrawContent">
-            <div class="withdraw-form">
-                <div class="auth-status" id="authStatus">
-                    🔐 Please verify wallet ownership to request withdrawals
-                </div>
-                
-                <button class="auth-btn" id="authBtn">Sign Message to Verify Wallet</button>
+            <!-- WITHDRAW TAB -->
+            <div class="tab-content" id="withdrawContent">
+                <div class="withdraw-form">
+                    <div class="auth-status" id="authStatus">
+                        🔐 Please verify wallet ownership to request withdrawals
+                    </div>
+                    
+                    <button class="auth-btn" id="authBtn">Sign Message to Verify</button>
 
-                <div id="withdrawFormFields" style="display: none;">
-                    <div class="form-row">
-                        <div class="form-group token-group">
-                            <label for="withdrawToken">Token:</label>
-                            <select id="withdrawToken">
-                                <option value="">Select...</option>
-                                <option value="USDC">USDC</option>
-                                <option value="USDT">USDT</option>
+                    <div id="withdrawFormFields" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group token-group">
+                                <label for="withdrawToken">Token</label>
+                                <select id="withdrawToken">
+                                    <option value="">Select...</option>
+                                    <option value="USDC">USDC</option>
+                                    <option value="USDT">USDT</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="withdrawAmount">Amount</label>
+                                <input type="number" id="withdrawAmount" placeholder="0.00" step="0.000001" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="withdrawAddress">Withdraw to</label>
+                            <input type="text" id="withdrawAddress" placeholder="0x... or Solana address">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="withdrawNetwork">Network</label>
+                            <select id="withdrawNetwork">
+                                <option value="">Select network...</option>
+                                <option value="ethereum">Ethereum</option>
+                                <option value="arbitrum">Arbitrum</option>
+                                <option value="base">Base</option>
+                                <option value="solana">Solana</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="withdrawAmount">Amount:</label>
-                            <input type="number" id="withdrawAmount" placeholder="0.0" step="0.000001" min="0">
-                        </div>
+
+                        <button class="primary-btn withdraw-btn" id="withdrawBtn" disabled>Request Withdrawal</button>
                     </div>
 
-                    <div class="form-group">
-                        <label for="withdrawAddress">Withdraw to Address:</label>
-                        <input type="text" id="withdrawAddress" placeholder="0x... or Solana address">
+                    <div class="withdraw-requests" id="withdrawRequests" style="display: none;">
+                        <h4>Your Requests</h4>
+                        <div id="requestsList"></div>
                     </div>
-
-                    <div class="form-group">
-                        <label for="withdrawNetwork">Network:</label>
-                        <select id="withdrawNetwork">
-                            <option value="">Select network...</option>
-                            <option value="ethereum">Ethereum</option>
-                            <option value="arbitrum">Arbitrum</option>
-                            <option value="base">Base</option>
-                            <option value="solana">Solana</option>
-                        </select>
-                    </div>
-
-                    <button class="withdraw-btn" id="withdrawBtn" disabled>Request Withdrawal</button>
-                </div>
-
-                <div class="withdraw-requests" id="withdrawRequests" style="display: none;">
-                    <h4>📋 Your Withdrawal Requests</h4>
-                    <div id="requestsList"></div>
                 </div>
             </div>
+
+            <div id="status" class="status"></div>
         </div>
 
         <div class="transaction-log" id="transactionLog">
@@ -559,11 +749,9 @@
         </div>
 
         <div class="deposit-totals-container" id="depositTotalsContainer">
-            <h3>📊 Your Deposit Summary</h3>
+            <h3>📊 Deposit Summary</h3>
             <div id="depositTotals"></div>
         </div>
-
-        <div id="status" class="status"></div>
     </div>
 
     <script>
@@ -698,16 +886,23 @@
             try {
                 let provider = null;
                 
-                // Check if MetaMask is available
-                if (window.ethereum?.providers) {
-                    // Multiple providers - find MetaMask
-                    provider = window.ethereum.providers.find(p => p.isMetaMask && !p.isPhantom);
-                } else if (window.ethereum?.isMetaMask && !window.ethereum?.isPhantom) {
+                // Method 1: Check for multiple providers array
+                if (window.ethereum?.providers?.length) {
+                    provider = window.ethereum.providers.find(p => p.isMetaMask);
+                }
+                
+                // Method 2: Direct MetaMask check
+                if (!provider && window.ethereum?.isMetaMask) {
+                    provider = window.ethereum;
+                }
+                
+                // Method 3: Fallback to any ethereum provider
+                if (!provider && window.ethereum) {
                     provider = window.ethereum;
                 }
                 
                 if (!provider) {
-                    throw new Error('MetaMask not found. Please install MetaMask.');
+                    throw new Error('No wallet found. Please install MetaMask.');
                 }
                 
                 const accounts = await provider.request({ method: 'eth_requestAccounts' });
@@ -730,10 +925,17 @@
         // Connect Phantom (Solana only)
         document.getElementById('connectPhantom').addEventListener('click', async function() {
             try {
-                const phantom = window.phantom?.solana || window.solana;
+                let phantom = null;
                 
-                if (!phantom || !phantom.isPhantom) {
-                    throw new Error('Phantom not found. Please install Phantom.');
+                // Try multiple ways to find Phantom
+                if (window.phantom?.solana?.isPhantom) {
+                    phantom = window.phantom.solana;
+                } else if (window.solana?.isPhantom) {
+                    phantom = window.solana;
+                }
+                
+                if (!phantom) {
+                    throw new Error('Phantom not found. Please install Phantom wallet.');
                 }
                 
                 const response = await phantom.connect();
@@ -752,37 +954,47 @@
             }
         });
 
-        // Connect Rabby
+        // Connect Rabby (or any other EVM wallet)
         document.getElementById('connectRabby').addEventListener('click', async function() {
             try {
                 let provider = null;
                 
-                // Check if Rabby is available
-                if (window.ethereum?.providers) {
-                    // Multiple providers - find Rabby
+                // Method 1: Check for multiple providers
+                if (window.ethereum?.providers?.length) {
                     provider = window.ethereum.providers.find(p => p.isRabby);
-                } else if (window.ethereum?.isRabby) {
+                    if (!provider) {
+                        provider = window.ethereum.providers.find(p => !p.isMetaMask);
+                    }
+                }
+                
+                // Method 2: Direct check
+                if (!provider && window.ethereum?.isRabby) {
+                    provider = window.ethereum;
+                }
+                
+                // Method 3: Fallback to any ethereum provider
+                if (!provider && window.ethereum) {
                     provider = window.ethereum;
                 }
                 
                 if (!provider) {
-                    throw new Error('Rabby not found. Please install Rabby.');
+                    throw new Error('No EVM wallet found. Please install a wallet.');
                 }
                 
                 const accounts = await provider.request({ method: 'eth_requestAccounts' });
                 if (accounts.length === 0) throw new Error('No accounts found');
                 
-                currentWallet = 'Rabby';
+                currentWallet = provider.isRabby ? 'Rabby' : 'Wallet';
                 currentProvider = provider;
                 currentAddress = accounts[0];
                 
                 updateWalletUI();
-                showStatus('Connected to Rabby!', 'success');
+                showStatus('Connected to ' + currentWallet + '!', 'success');
                 
                 provider.on('accountsChanged', handleAccountChange);
                 provider.on('chainChanged', () => location.reload());
             } catch (err) {
-                showStatus('Rabby error: ' + err.message, 'error');
+                showStatus('Wallet error: ' + err.message, 'error');
             }
         });
 
@@ -947,7 +1159,7 @@
                     showStatus('Error: ' + err.message, 'error');
                 }
             } finally {
-                depositBtn.innerHTML = 'Deposit Tokens';
+                depositBtn.innerHTML = 'Deposit';
                 depositBtn.disabled = false;
                 updateDepositButton();
             }
@@ -1005,6 +1217,10 @@
             tokenBalanceDisplay.textContent = 'Balance: --';
             maxBtn.style.display = 'none';
             depositTotalsContainer.style.display = 'none';
+            
+            // Reset hero stats
+            document.getElementById('heroTotalDeposited').textContent = '$0.00';
+            document.getElementById('heroDepositCount').textContent = '0';
             
             // Reset withdraw section
             authStatus.className = 'auth-status';
@@ -1312,6 +1528,12 @@
                         if (d.token === 'USDC') usdc += parseFloat(d.amount);
                         if (d.token === 'USDT') usdt += parseFloat(d.amount);
                     });
+                    
+                    // Update hero stats
+                    document.getElementById('heroTotalDeposited').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    document.getElementById('heroDepositCount').textContent = data.length;
+                    
+                    // Update detail card
                     depositTotalsContainer.style.display = 'block';
                     depositTotals.innerHTML = 
                         '<div class="totals-summary">' +
@@ -1319,6 +1541,9 @@
                         '<div class="total-count">' + data.length + ' deposit(s)</div>' +
                         '<div style="margin-top:10px;font-size:0.85rem;color:#666;">USDC: $' + usdc.toFixed(2) + ' | USDT: $' + usdt.toFixed(2) + '</div>' +
                         '</div>';
+                } else {
+                    document.getElementById('heroTotalDeposited').textContent = '$0.00';
+                    document.getElementById('heroDepositCount').textContent = '0';
                 }
             } catch (e) {
                 console.log('Supabase load error:', e);
@@ -1330,5 +1555,6 @@
     </script>
 </body>
 </html>
+
 
 
