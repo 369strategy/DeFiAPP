@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #0a0a0a;
@@ -157,7 +162,9 @@
             overflow: hidden;
         }
 
-        .wallet-dropdown.show { display: block; }
+        .wallet-dropdown.show {
+            display: block;
+        }
 
         .wallet-option {
             padding: 14px 18px;
@@ -169,8 +176,13 @@
             transition: background 0.2s;
         }
 
-        .wallet-option:hover { background: #222; }
-        .wallet-option:last-child { border-bottom: none; }
+        .wallet-option:hover {
+            background: #222;
+        }
+
+        .wallet-option:last-child {
+            border-bottom: none;
+        }
 
         .wallet-icon {
             width: 28px;
@@ -215,15 +227,22 @@
             transition: all 0.2s;
         }
 
-        .tab:hover { color: #999; }
+        .tab:hover {
+            color: #999;
+        }
 
         .tab.active {
             color: #fff;
             background: #1a1a1a;
         }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
 
         .form-row {
             display: flex;
@@ -231,12 +250,14 @@
             margin-bottom: 16px;
         }
 
-        .form-group { 
+        .form-group {
             flex: 1;
             margin-bottom: 16px;
         }
 
-        .form-group.token-group { flex: 0 0 120px; }
+        .form-group.token-group {
+            flex: 0 0 120px;
+        }
 
         .form-group label {
             display: block;
@@ -248,7 +269,8 @@
             letter-spacing: 0.05em;
         }
 
-        .form-group input, .form-group select {
+        .form-group input,
+        .form-group select {
             width: 100%;
             padding: 14px 16px;
             background: #0f0f0f;
@@ -259,7 +281,8 @@
             transition: border-color 0.2s;
         }
 
-        .form-group input:focus, .form-group select:focus {
+        .form-group input:focus,
+        .form-group select:focus {
             outline: none;
             border-color: #00ff88;
         }
@@ -380,18 +403,20 @@
             font-size: 0.9rem;
         }
 
-        .status.success { 
-            background: #00ff8815; 
-            color: #00ff88; 
+        .status.success {
+            background: #00ff8815;
+            color: #00ff88;
             border: 1px solid #00ff8840;
         }
-        .status.error { 
-            background: #ff444415; 
+
+        .status.error {
+            background: #ff444415;
             color: #ff4444;
             border: 1px solid #ff444440;
         }
-        .status.info { 
-            background: #3b82f615; 
+
+        .status.info {
+            background: #3b82f615;
             color: #3b82f6;
             border: 1px solid #3b82f640;
         }
@@ -407,8 +432,8 @@
             display: none;
         }
 
-        .transaction-log h4 { 
-            font-size: 0.9rem; 
+        .transaction-log h4 {
+            font-size: 0.9rem;
             margin-bottom: 12px;
             color: #888;
             text-transform: uppercase;
@@ -446,8 +471,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .deposit-totals-container {
@@ -599,6 +629,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="top-controls">
         <select class="chain-select" id="topChainSelect">
@@ -617,11 +648,15 @@
             <div class="wallet-dropdown" id="walletDropdown">
                 <div class="wallet-option" id="connectMetaMask">
                     <div class="wallet-icon"></div>
-                    <span>EVM Wallet</span>
+                    <span>MetaMask</span>
+                </div>
+                <div class="wallet-option" id="connectRabby">
+                    <div class="wallet-icon"></div>
+                    <span>Rabby</span>
                 </div>
                 <div class="wallet-option" id="connectPhantom">
                     <div class="wallet-icon"></div>
-                    <span>Solana Wallet</span>
+                    <span>Phantom (Solana)</span>
                 </div>
             </div>
         </div>
@@ -691,7 +726,7 @@
                     <div class="auth-status" id="authStatus">
                         🔐 Please verify wallet ownership to request withdrawals
                     </div>
-                    
+
                     <button class="auth-btn" id="authBtn">Sign Message to Verify</button>
 
                     <div id="withdrawFormFields" style="display: none;">
@@ -816,13 +851,13 @@
         const transactionList = document.getElementById('transactionList');
         const depositTotalsContainer = document.getElementById('depositTotalsContainer');
         const depositTotals = document.getElementById('depositTotals');
-        
+
         // Tab elements
         const depositTab = document.getElementById('depositTab');
         const withdrawTab = document.getElementById('withdrawTab');
         const depositContent = document.getElementById('depositContent');
         const withdrawContent = document.getElementById('withdrawContent');
-        
+
         // Withdraw elements
         const authStatus = document.getElementById('authStatus');
         const authBtn = document.getElementById('authBtn');
@@ -850,7 +885,7 @@
         }
 
         // Chain select handler
-        topChainSelect.addEventListener('change', function() {
+        topChainSelect.addEventListener('change', function () {
             const chain = this.value;
             if (chain && DEPOSIT_ADDRESSES[chain]) {
                 depositAddress.textContent = DEPOSIT_ADDRESSES[chain];
@@ -867,44 +902,44 @@
         });
 
         // Wallet dropdown toggle
-        walletConnectBtn.addEventListener('click', function() {
+        walletConnectBtn.addEventListener('click', function () {
             walletDropdown.classList.toggle('show');
         });
 
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (!e.target.closest('.top-controls')) {
                 walletDropdown.classList.remove('show');
             }
         });
 
         // Connect MetaMask
-        document.getElementById('connectMetaMask').addEventListener('click', async function() {
+        document.getElementById('connectMetaMask').addEventListener('click', async function () {
             await connectEVMWallet('MetaMask');
         });
 
         // Connect Phantom (Solana only)
-        document.getElementById('connectPhantom').addEventListener('click', async function() {
+        document.getElementById('connectPhantom').addEventListener('click', async function () {
             try {
                 let phantom = window.phantom?.solana || window.solana;
-                
+
                 if (!phantom?.isPhantom) {
                     throw new Error('Phantom not found. Please install Phantom.');
                 }
-                
+
                 // Disconnect first to allow account selection
                 if (phantom.isConnected) {
                     await phantom.disconnect();
                 }
-                
+
                 const response = await phantom.connect();
-                
+
                 currentWallet = 'Phantom';
                 currentProvider = phantom;
                 currentAddress = response.publicKey.toString();
-                
+
                 topChainSelect.value = 'solana';
                 topChainSelect.dispatchEvent(new Event('change'));
-                
+
                 updateWalletUI();
                 showStatus('Connected to Phantom!', 'success');
             } catch (err) {
@@ -912,7 +947,10 @@
             }
         });
 
-        // Connect Rabby / Other - removed, using single EVM option
+        // Connect Rabby
+        document.getElementById('connectRabby').addEventListener('click', async function () {
+            await connectEVMWallet('Rabby');
+        });
 
         // Universal EVM wallet connector
         async function connectEVMWallet(preferredName) {
@@ -920,26 +958,30 @@
                 if (!window.ethereum) {
                     throw new Error('No wallet found. Please install MetaMask or another EVM wallet.');
                 }
-                
-                // Force wallet to show account selection popup
-                await window.ethereum.request({
-                    method: 'wallet_requestPermissions',
-                    params: [{ eth_accounts: {} }]
-                });
-                
+
+                // Request permissions to show account picker
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_requestPermissions',
+                        params: [{ eth_accounts: {} }]
+                    });
+                } catch (permErr) {
+                    // Some wallets don't support this, continue anyway
+                }
+
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                
+
                 if (!accounts || accounts.length === 0) {
                     throw new Error('No accounts found');
                 }
-                
+
                 currentWallet = preferredName;
                 currentProvider = window.ethereum;
                 currentAddress = accounts[0];
-                
+
                 updateWalletUI();
                 showStatus('Connected to ' + currentWallet + '!', 'success');
-                
+
                 window.ethereum.on('accountsChanged', handleAccountChange);
                 window.ethereum.on('chainChanged', () => location.reload());
             } catch (err) {
@@ -975,26 +1017,26 @@
         // Token balance
         async function checkTokenBalance() {
             if (!currentProvider || !currentAddress) return;
-            
+
             const network = topChainSelect.value;
             const token = tokenSelect.value;
-            
+
             if (!network || !token || network === 'solana') {
                 tokenBalanceDisplay.textContent = 'Balance: --';
                 maxBtn.style.display = 'none';
                 return;
             }
-            
+
             try {
                 const tokenAddress = TOKEN_CONTRACTS[network][token];
                 if (!tokenAddress) return;
-                
+
                 const balanceData = '0x70a08231' + currentAddress.slice(2).padStart(64, '0');
                 const balance = await currentProvider.request({
                     method: 'eth_call',
                     params: [{ to: tokenAddress, data: balanceData }, 'latest']
                 });
-                
+
                 const tokenAmount = parseInt(balance, 16) / 1e6;
                 currentTokenBalance = tokenAmount;
                 tokenBalanceDisplay.textContent = 'Balance: ' + tokenAmount.toFixed(2) + ' ' + token;
@@ -1004,14 +1046,14 @@
             }
         }
 
-        tokenSelect.addEventListener('change', function() {
+        tokenSelect.addEventListener('change', function () {
             updateDepositButton();
             checkTokenBalance();
         });
 
         amountInput.addEventListener('input', updateDepositButton);
 
-        maxBtn.addEventListener('click', function() {
+        maxBtn.addEventListener('click', function () {
             amountInput.value = currentTokenBalance;
             updateDepositButton();
         });
@@ -1022,7 +1064,7 @@
         }
 
         // Deposit
-        depositBtn.addEventListener('click', async function() {
+        depositBtn.addEventListener('click', async function () {
             const network = topChainSelect.value;
             const token = tokenSelect.value;
             const amount = parseFloat(amountInput.value);
@@ -1119,7 +1161,7 @@
         });
 
         function updateTransactionLog() {
-            transactionList.innerHTML = transactionHistory.slice(0, 10).map(tx => 
+            transactionList.innerHTML = transactionHistory.slice(0, 10).map(tx =>
                 '<div class="transaction-item">' +
                 '<div><strong>' + tx.type + ':</strong> ' + tx.amount + ' ' + tx.token + ' on ' + tx.network + '</div>' +
                 '<div><strong>Status:</strong> ' + tx.status + '</div>' +
@@ -1147,34 +1189,34 @@
                         return;
                     }
                     if (++attempts < 60) setTimeout(check, 5000);
-                } catch (e) {}
+                } catch (e) { }
             };
             setTimeout(check, 5000);
         }
 
         // Disconnect wallet
-        disconnectBtn.addEventListener('click', function() {
+        disconnectBtn.addEventListener('click', function () {
             currentWallet = null;
             currentProvider = null;
             currentAddress = null;
             currentChainId = null;
             isWalletVerified = false;
             verificationSignature = null;
-            
+
             walletConnectBtn.classList.remove('connected');
             walletConnectText.textContent = 'Connect Wallet';
             walletConnectIcon.textContent = '⚡';
             disconnectBtn.style.display = 'none';
-            
+
             depositForm.classList.remove('active');
             tokenBalanceDisplay.textContent = 'Balance: --';
             maxBtn.style.display = 'none';
             depositTotalsContainer.style.display = 'none';
-            
+
             // Reset hero stats
             document.getElementById('heroTotalDeposited').textContent = '$0.00';
             document.getElementById('heroDepositCount').textContent = '0';
-            
+
             // Reset withdraw section
             authStatus.className = 'auth-status';
             authStatus.innerHTML = '🔐 Please verify wallet ownership to request withdrawals';
@@ -1182,34 +1224,34 @@
             authBtn.disabled = false;
             withdrawFormFields.style.display = 'none';
             withdrawRequests.style.display = 'none';
-            
+
             showStatus('Wallet disconnected', 'info');
         });
 
         // Tab switching
-        depositTab.addEventListener('click', function() {
+        depositTab.addEventListener('click', function () {
             depositTab.classList.add('active');
             withdrawTab.classList.remove('active');
             depositContent.classList.add('active');
             withdrawContent.classList.remove('active');
         });
 
-        withdrawTab.addEventListener('click', function() {
+        withdrawTab.addEventListener('click', function () {
             withdrawTab.classList.add('active');
             depositTab.classList.remove('active');
             withdrawContent.classList.add('active');
             depositContent.classList.remove('active');
-            
+
             if (!currentAddress) {
                 showStatus('Please connect your wallet first', 'error');
                 return;
             }
-            
+
             loadWithdrawRequests();
         });
 
         // Wallet authentication - sign message to prove ownership
-        authBtn.addEventListener('click', async function() {
+        authBtn.addEventListener('click', async function () {
             if (!currentAddress || !currentProvider) {
                 showStatus('Please connect your wallet first', 'error');
                 return;
@@ -1223,7 +1265,7 @@
 
             try {
                 let signature;
-                
+
                 if (currentWallet === 'Phantom') {
                     // Solana signing
                     const encodedMessage = new TextEncoder().encode(message);
@@ -1287,7 +1329,7 @@
         // Check if wallet is already verified
         async function checkVerification() {
             if (!currentAddress) return;
-            
+
             try {
                 const response = await fetch(
                     SUPABASE_URL + '/rest/v1/wallet_verifications?wallet_address=eq.' + currentAddress.toLowerCase(),
@@ -1299,16 +1341,16 @@
                     }
                 );
                 const data = await response.json();
-                
+
                 if (data && data.length > 0) {
                     isWalletVerified = true;
                     verificationSignature = data[0].signature;
-                    
+
                     authStatus.className = 'auth-status verified';
                     authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
                     authBtn.style.display = 'none';
                     withdrawFormFields.style.display = 'block';
-                    
+
                     loadWithdrawRequests();
                 }
             } catch (e) {
@@ -1318,12 +1360,12 @@
 
         // Update withdraw button state
         function updateWithdrawButton() {
-            const valid = isWalletVerified && 
-                         withdrawToken.value && 
-                         withdrawAmount.value && 
-                         parseFloat(withdrawAmount.value) > 0 &&
-                         withdrawAddress.value &&
-                         withdrawNetwork.value;
+            const valid = isWalletVerified &&
+                withdrawToken.value &&
+                withdrawAmount.value &&
+                parseFloat(withdrawAmount.value) > 0 &&
+                withdrawAddress.value &&
+                withdrawNetwork.value;
             withdrawBtn.disabled = !valid;
         }
 
@@ -1333,7 +1375,7 @@
         withdrawNetwork.addEventListener('change', updateWithdrawButton);
 
         // Submit withdrawal request
-        withdrawBtn.addEventListener('click', async function() {
+        withdrawBtn.addEventListener('click', async function () {
             if (!isWalletVerified) {
                 showStatus('Please verify your wallet first', 'error');
                 return;
@@ -1373,13 +1415,13 @@
 
                 if (response.ok) {
                     showStatus('Withdrawal request submitted successfully!', 'success');
-                    
+
                     // Clear form
                     withdrawToken.value = '';
                     withdrawAmount.value = '';
                     withdrawAddress.value = '';
                     withdrawNetwork.value = '';
-                    
+
                     loadWithdrawRequests();
                 } else {
                     throw new Error('Failed to submit request');
@@ -1410,7 +1452,7 @@
 
                 if (data && data.length > 0) {
                     withdrawRequests.style.display = 'block';
-                    requestsList.innerHTML = data.map(req => 
+                    requestsList.innerHTML = data.map(req =>
                         '<div class="request-item">' +
                         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
                         '<strong>' + req.amount + ' ' + req.token + '</strong>' +
@@ -1481,14 +1523,14 @@
                         if (d.token === 'USDC') usdc += parseFloat(d.amount);
                         if (d.token === 'USDT') usdt += parseFloat(d.amount);
                     });
-                    
+
                     // Update hero stats
-                    document.getElementById('heroTotalDeposited').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    document.getElementById('heroTotalDeposited').textContent = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     document.getElementById('heroDepositCount').textContent = data.length;
-                    
+
                     // Update detail card
                     depositTotalsContainer.style.display = 'block';
-                    depositTotals.innerHTML = 
+                    depositTotals.innerHTML =
                         '<div class="totals-summary">' +
                         '<div class="total-value">$' + total.toFixed(2) + '</div>' +
                         '<div class="total-count">' + data.length + ' deposit(s)</div>' +
@@ -1507,4 +1549,5 @@
         showStatus('Connect your wallet to start depositing!', 'info');
     </script>
 </body>
+
 </html>
