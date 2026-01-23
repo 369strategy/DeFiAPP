@@ -53,6 +53,19 @@
         .wallet-connect-btn.connected {
             background: linear-gradient(135deg, #718096, #4a5568);
         }
+        .disconnect-btn {
+            padding: 6px 10px;
+            background: #e53e3e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .disconnect-btn:hover {
+            background: #c53030;
+        }
         .wallet-dropdown {
             position: absolute;
             top: 100%;
@@ -280,6 +293,133 @@
             color: #718096;
             margin-top: 8px;
         }
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #718096;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: #4a5568;
+        }
+        .tab.active {
+            color: #2d3748;
+            border-bottom-color: #2d3748;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .withdraw-form {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .auth-status {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .auth-status.verified {
+            background: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 10px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .auth-btn:hover {
+            background: #d97706;
+        }
+        .auth-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .withdraw-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #7c3aed, #5b21b6);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .withdraw-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3);
+        }
+        .withdraw-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .withdraw-requests {
+            margin-top: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .withdraw-requests h4 {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+        .request-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+        .request-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .request-status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .request-status.approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .request-status.rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
     </style>
 </head>
 <body>
@@ -291,11 +431,12 @@
             <option value="base">Base</option>
             <option value="solana">Solana</option>
         </select>
-        <div style="position: relative;">
+        <div style="position: relative; display: flex; align-items: center;">
             <button class="wallet-connect-btn" id="walletConnectBtn">
                 <span id="walletConnectText">Connect Wallet</span>
                 <span id="walletConnectIcon">⚡</span>
             </button>
+            <button class="disconnect-btn" id="disconnectBtn" style="display: none;">✕</button>
             <div class="wallet-dropdown" id="walletDropdown">
                 <div class="wallet-option" id="connectMetaMask">
                     <div class="wallet-icon"></div>
@@ -316,42 +457,99 @@
     <div class="container">
         <div class="header">
             <h1>Crypto Platform</h1>
-            <p>Deposit USDC & USDT Securely</p>
+            <p>Deposit & Withdraw USDC & USDT Securely</p>
         </div>
 
-        <div class="deposit-section">
-            <h2 class="section-title">Deposit Tokens</h2>
-            
-            <div id="depositForm" class="deposit-form">
-                <div class="form-row">
-                    <div class="form-group token-group">
-                        <label for="tokenSelect">Token:</label>
-                        <select id="tokenSelect">
-                            <option value="">Select...</option>
-                            <option value="USDC">USDC</option>
-                            <option value="USDT">USDT</option>
+        <div class="tabs">
+            <button class="tab active" id="depositTab">Deposit</button>
+            <button class="tab" id="withdrawTab">Withdraw</button>
+        </div>
+
+        <!-- DEPOSIT TAB -->
+        <div class="tab-content active" id="depositContent">
+            <div class="deposit-section" style="border-top: none; padding-top: 0;">
+                <div id="depositForm" class="deposit-form">
+                    <div class="form-row">
+                        <div class="form-group token-group">
+                            <label for="tokenSelect">Token:</label>
+                            <select id="tokenSelect">
+                                <option value="">Select...</option>
+                                <option value="USDC">USDC</option>
+                                <option value="USDT">USDT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Amount:</label>
+                            <input type="number" id="amount" placeholder="0.0" step="0.000001" min="0">
+                        </div>
+                    </div>
+
+                    <div class="token-balance">
+                        <span id="tokenBalanceDisplay">Balance: --</span>
+                        <button class="max-btn" id="maxBtn">MAX</button>
+                    </div>
+
+                    <div class="deposit-info">
+                        <p style="margin-bottom: 5px; font-size: 0.9rem;"><strong>Deposit Address:</strong></p>
+                        <p id="depositAddress" class="deposit-address">Select a chain to see deposit address</p>
+                        <div class="network-info" id="networkInfo">
+                            <span id="networkInfoText"></span>
+                        </div>
+                    </div>
+
+                    <button class="deposit-btn" id="depositBtn" disabled>Deposit Tokens</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WITHDRAW TAB -->
+        <div class="tab-content" id="withdrawContent">
+            <div class="withdraw-form">
+                <div class="auth-status" id="authStatus">
+                    🔐 Please verify wallet ownership to request withdrawals
+                </div>
+                
+                <button class="auth-btn" id="authBtn">Sign Message to Verify Wallet</button>
+
+                <div id="withdrawFormFields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group token-group">
+                            <label for="withdrawToken">Token:</label>
+                            <select id="withdrawToken">
+                                <option value="">Select...</option>
+                                <option value="USDC">USDC</option>
+                                <option value="USDT">USDT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="withdrawAmount">Amount:</label>
+                            <input type="number" id="withdrawAmount" placeholder="0.0" step="0.000001" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="withdrawAddress">Withdraw to Address:</label>
+                        <input type="text" id="withdrawAddress" placeholder="0x... or Solana address">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="withdrawNetwork">Network:</label>
+                        <select id="withdrawNetwork">
+                            <option value="">Select network...</option>
+                            <option value="ethereum">Ethereum</option>
+                            <option value="arbitrum">Arbitrum</option>
+                            <option value="base">Base</option>
+                            <option value="solana">Solana</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="amount">Amount:</label>
-                        <input type="number" id="amount" placeholder="0.0" step="0.000001" min="0">
-                    </div>
+
+                    <button class="withdraw-btn" id="withdrawBtn" disabled>Request Withdrawal</button>
                 </div>
 
-                <div class="token-balance">
-                    <span id="tokenBalanceDisplay">Balance: --</span>
-                    <button class="max-btn" id="maxBtn">MAX</button>
+                <div class="withdraw-requests" id="withdrawRequests" style="display: none;">
+                    <h4>📋 Your Withdrawal Requests</h4>
+                    <div id="requestsList"></div>
                 </div>
-
-                <div class="deposit-info">
-                    <p style="margin-bottom: 5px; font-size: 0.9rem;"><strong>Deposit Address:</strong></p>
-                    <p id="depositAddress" class="deposit-address">Select a chain to see deposit address</p>
-                    <div class="network-info" id="networkInfo">
-                        <span id="networkInfoText"></span>
-                    </div>
-                </div>
-
-                <button class="deposit-btn" id="depositBtn" disabled>Deposit Tokens</button>
             </div>
         </div>
 
@@ -376,6 +574,8 @@
         let currentChainId = null;
         let transactionHistory = [];
         let currentTokenBalance = 0;
+        let isWalletVerified = false;
+        let verificationSignature = null;
 
         // Config
         const DEPOSIT_ADDRESSES = {
@@ -417,6 +617,7 @@
         const walletConnectText = document.getElementById('walletConnectText');
         const walletConnectIcon = document.getElementById('walletConnectIcon');
         const walletDropdown = document.getElementById('walletDropdown');
+        const disconnectBtn = document.getElementById('disconnectBtn');
         const depositForm = document.getElementById('depositForm');
         const depositAddress = document.getElementById('depositAddress');
         const networkInfo = document.getElementById('networkInfo');
@@ -431,6 +632,24 @@
         const transactionList = document.getElementById('transactionList');
         const depositTotalsContainer = document.getElementById('depositTotalsContainer');
         const depositTotals = document.getElementById('depositTotals');
+        
+        // Tab elements
+        const depositTab = document.getElementById('depositTab');
+        const withdrawTab = document.getElementById('withdrawTab');
+        const depositContent = document.getElementById('depositContent');
+        const withdrawContent = document.getElementById('withdrawContent');
+        
+        // Withdraw elements
+        const authStatus = document.getElementById('authStatus');
+        const authBtn = document.getElementById('authBtn');
+        const withdrawFormFields = document.getElementById('withdrawFormFields');
+        const withdrawToken = document.getElementById('withdrawToken');
+        const withdrawAmount = document.getElementById('withdrawAmount');
+        const withdrawAddress = document.getElementById('withdrawAddress');
+        const withdrawNetwork = document.getElementById('withdrawNetwork');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const withdrawRequests = document.getElementById('withdrawRequests');
+        const requestsList = document.getElementById('requestsList');
 
         // Helpers
         function showStatus(message, type) {
@@ -581,9 +800,11 @@
             walletConnectText.textContent = currentWallet + ': ' + abbreviateAddress(currentAddress);
             walletConnectIcon.textContent = '✓';
             walletDropdown.classList.remove('show');
+            disconnectBtn.style.display = 'inline-block';
             updateDepositButton();
             checkTokenBalance();
             loadDepositTotals();
+            checkVerification();
         }
 
         // Token balance
@@ -766,6 +987,282 @@
             setTimeout(check, 5000);
         }
 
+        // Disconnect wallet
+        disconnectBtn.addEventListener('click', function() {
+            currentWallet = null;
+            currentProvider = null;
+            currentAddress = null;
+            currentChainId = null;
+            isWalletVerified = false;
+            verificationSignature = null;
+            
+            walletConnectBtn.classList.remove('connected');
+            walletConnectText.textContent = 'Connect Wallet';
+            walletConnectIcon.textContent = '⚡';
+            disconnectBtn.style.display = 'none';
+            
+            depositForm.classList.remove('active');
+            tokenBalanceDisplay.textContent = 'Balance: --';
+            maxBtn.style.display = 'none';
+            depositTotalsContainer.style.display = 'none';
+            
+            // Reset withdraw section
+            authStatus.className = 'auth-status';
+            authStatus.innerHTML = '🔐 Please verify wallet ownership to request withdrawals';
+            authBtn.style.display = 'block';
+            authBtn.disabled = false;
+            withdrawFormFields.style.display = 'none';
+            withdrawRequests.style.display = 'none';
+            
+            showStatus('Wallet disconnected', 'info');
+        });
+
+        // Tab switching
+        depositTab.addEventListener('click', function() {
+            depositTab.classList.add('active');
+            withdrawTab.classList.remove('active');
+            depositContent.classList.add('active');
+            withdrawContent.classList.remove('active');
+        });
+
+        withdrawTab.addEventListener('click', function() {
+            withdrawTab.classList.add('active');
+            depositTab.classList.remove('active');
+            withdrawContent.classList.add('active');
+            depositContent.classList.remove('active');
+            
+            if (!currentAddress) {
+                showStatus('Please connect your wallet first', 'error');
+                return;
+            }
+            
+            loadWithdrawRequests();
+        });
+
+        // Wallet authentication - sign message to prove ownership
+        authBtn.addEventListener('click', async function() {
+            if (!currentAddress || !currentProvider) {
+                showStatus('Please connect your wallet first', 'error');
+                return;
+            }
+
+            const timestamp = Date.now();
+            const message = `Verify wallet ownership for Crypto Platform\n\nWallet: ${currentAddress}\nTimestamp: ${timestamp}\n\nSign this message to prove you own this wallet and enable withdrawal requests.`;
+
+            authBtn.disabled = true;
+            authBtn.textContent = 'Please sign in wallet...';
+
+            try {
+                let signature;
+                
+                if (currentWallet === 'Phantom') {
+                    // Solana signing
+                    const encodedMessage = new TextEncoder().encode(message);
+                    const signedMessage = await currentProvider.signMessage(encodedMessage, 'utf8');
+                    signature = btoa(String.fromCharCode(...signedMessage.signature));
+                } else {
+                    // EVM signing
+                    signature = await currentProvider.request({
+                        method: 'personal_sign',
+                        params: [message, currentAddress]
+                    });
+                }
+
+                verificationSignature = signature;
+                isWalletVerified = true;
+
+                // Save verification to Supabase
+                await saveVerification(currentAddress, signature, timestamp);
+
+                authStatus.className = 'auth-status verified';
+                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                authBtn.style.display = 'none';
+                withdrawFormFields.style.display = 'block';
+
+                showStatus('Wallet verified successfully!', 'success');
+                loadWithdrawRequests();
+
+            } catch (err) {
+                if (err.code === 4001) {
+                    showStatus('Signature rejected', 'error');
+                } else {
+                    showStatus('Verification failed: ' + err.message, 'error');
+                }
+                authBtn.disabled = false;
+                authBtn.textContent = 'Sign Message to Verify Wallet';
+            }
+        });
+
+        // Save verification to Supabase
+        async function saveVerification(wallet, signature, timestamp) {
+            try {
+                await fetch(SUPABASE_URL + '/rest/v1/wallet_verifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        wallet_address: wallet.toLowerCase(),
+                        signature: signature,
+                        verified_at: new Date(timestamp).toISOString()
+                    })
+                });
+            } catch (e) {
+                console.log('Verification save error:', e);
+            }
+        }
+
+        // Check if wallet is already verified
+        async function checkVerification() {
+            if (!currentAddress) return;
+            
+            try {
+                const response = await fetch(
+                    SUPABASE_URL + '/rest/v1/wallet_verifications?wallet_address=eq.' + currentAddress.toLowerCase(),
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        }
+                    }
+                );
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    isWalletVerified = true;
+                    verificationSignature = data[0].signature;
+                    
+                    authStatus.className = 'auth-status verified';
+                    authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                    authBtn.style.display = 'none';
+                    withdrawFormFields.style.display = 'block';
+                    
+                    loadWithdrawRequests();
+                }
+            } catch (e) {
+                console.log('Verification check error:', e);
+            }
+        }
+
+        // Update withdraw button state
+        function updateWithdrawButton() {
+            const valid = isWalletVerified && 
+                         withdrawToken.value && 
+                         withdrawAmount.value && 
+                         parseFloat(withdrawAmount.value) > 0 &&
+                         withdrawAddress.value &&
+                         withdrawNetwork.value;
+            withdrawBtn.disabled = !valid;
+        }
+
+        withdrawToken.addEventListener('change', updateWithdrawButton);
+        withdrawAmount.addEventListener('input', updateWithdrawButton);
+        withdrawAddress.addEventListener('input', updateWithdrawButton);
+        withdrawNetwork.addEventListener('change', updateWithdrawButton);
+
+        // Submit withdrawal request
+        withdrawBtn.addEventListener('click', async function() {
+            if (!isWalletVerified) {
+                showStatus('Please verify your wallet first', 'error');
+                return;
+            }
+
+            const token = withdrawToken.value;
+            const amount = parseFloat(withdrawAmount.value);
+            const toAddress = withdrawAddress.value.trim();
+            const network = withdrawNetwork.value;
+
+            if (!token || !amount || !toAddress || !network) {
+                showStatus('Please fill all fields', 'error');
+                return;
+            }
+
+            withdrawBtn.disabled = true;
+            withdrawBtn.innerHTML = '<div class="loading"></div> Submitting...';
+
+            try {
+                const response = await fetch(SUPABASE_URL + '/rest/v1/withdrawal_requests', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY
+                    },
+                    body: JSON.stringify({
+                        wallet_address: currentAddress.toLowerCase(),
+                        token: token,
+                        amount: amount,
+                        to_address: toAddress.toLowerCase(),
+                        network: network,
+                        status: 'pending',
+                        verification_signature: verificationSignature
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('Withdrawal request submitted successfully!', 'success');
+                    
+                    // Clear form
+                    withdrawToken.value = '';
+                    withdrawAmount.value = '';
+                    withdrawAddress.value = '';
+                    withdrawNetwork.value = '';
+                    
+                    loadWithdrawRequests();
+                } else {
+                    throw new Error('Failed to submit request');
+                }
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
+            } finally {
+                withdrawBtn.innerHTML = 'Request Withdrawal';
+                updateWithdrawButton();
+            }
+        });
+
+        // Load withdrawal requests
+        async function loadWithdrawRequests() {
+            if (!currentAddress) return;
+
+            try {
+                const response = await fetch(
+                    SUPABASE_URL + '/rest/v1/withdrawal_requests?wallet_address=eq.' + currentAddress.toLowerCase() + '&order=created_at.desc',
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        }
+                    }
+                );
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    withdrawRequests.style.display = 'block';
+                    requestsList.innerHTML = data.map(req => 
+                        '<div class="request-item">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                        '<strong>' + req.amount + ' ' + req.token + '</strong>' +
+                        '<span class="request-status ' + req.status + '">' + req.status.toUpperCase() + '</span>' +
+                        '</div>' +
+                        '<div style="font-size:0.8rem;color:#666;margin-top:5px;">' +
+                        'To: ' + req.to_address.slice(0, 10) + '...' + req.to_address.slice(-6) + ' (' + req.network + ')' +
+                        '</div>' +
+                        '<div style="font-size:0.75rem;color:#999;margin-top:3px;">' +
+                        new Date(req.created_at).toLocaleString() +
+                        '</div>' +
+                        '</div>'
+                    ).join('');
+                } else {
+                    withdrawRequests.style.display = 'none';
+                }
+            } catch (e) {
+                console.log('Load requests error:', e);
+            }
+        }
+
         // Deposit tracking with Supabase
         async function saveDeposit(amount, token, network, txHash) {
             try {
@@ -833,4 +1330,5 @@
     </script>
 </body>
 </html>
+
 
