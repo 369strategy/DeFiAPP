@@ -617,15 +617,11 @@
             <div class="wallet-dropdown" id="walletDropdown">
                 <div class="wallet-option" id="connectMetaMask">
                     <div class="wallet-icon"></div>
-                    <span>MetaMask</span>
+                    <span>EVM Wallet</span>
                 </div>
                 <div class="wallet-option" id="connectPhantom">
                     <div class="wallet-icon"></div>
-                    <span>Phantom</span>
-                </div>
-                <div class="wallet-option" id="connectRabby">
-                    <div class="wallet-icon"></div>
-                    <span>Rabby / Other</span>
+                    <span>Solana Wallet</span>
                 </div>
             </div>
         </div>
@@ -883,59 +879,16 @@
 
         // Connect MetaMask
         document.getElementById('connectMetaMask').addEventListener('click', async function() {
-            try {
-                let provider = null;
-                
-                // Method 1: Check for multiple providers array
-                if (window.ethereum?.providers?.length) {
-                    provider = window.ethereum.providers.find(p => p.isMetaMask);
-                }
-                
-                // Method 2: Direct MetaMask check
-                if (!provider && window.ethereum?.isMetaMask) {
-                    provider = window.ethereum;
-                }
-                
-                // Method 3: Fallback to any ethereum provider
-                if (!provider && window.ethereum) {
-                    provider = window.ethereum;
-                }
-                
-                if (!provider) {
-                    throw new Error('No wallet found. Please install MetaMask.');
-                }
-                
-                const accounts = await provider.request({ method: 'eth_requestAccounts' });
-                if (accounts.length === 0) throw new Error('No accounts found');
-                
-                currentWallet = 'MetaMask';
-                currentProvider = provider;
-                currentAddress = accounts[0];
-                
-                updateWalletUI();
-                showStatus('Connected to MetaMask!', 'success');
-                
-                provider.on('accountsChanged', handleAccountChange);
-                provider.on('chainChanged', () => location.reload());
-            } catch (err) {
-                showStatus('MetaMask error: ' + err.message, 'error');
-            }
+            await connectEVMWallet('MetaMask');
         });
 
         // Connect Phantom (Solana only)
         document.getElementById('connectPhantom').addEventListener('click', async function() {
             try {
-                let phantom = null;
+                let phantom = window.phantom?.solana || window.solana;
                 
-                // Try multiple ways to find Phantom
-                if (window.phantom?.solana?.isPhantom) {
-                    phantom = window.phantom.solana;
-                } else if (window.solana?.isPhantom) {
-                    phantom = window.solana;
-                }
-                
-                if (!phantom) {
-                    throw new Error('Phantom not found. Please install Phantom wallet.');
+                if (!phantom?.isPhantom) {
+                    throw new Error('Phantom not found. Please install Phantom.');
                 }
                 
                 const response = await phantom.connect();
@@ -950,53 +903,42 @@
                 updateWalletUI();
                 showStatus('Connected to Phantom!', 'success');
             } catch (err) {
-                showStatus('Phantom error: ' + err.message, 'error');
+                showStatus('Phantom: ' + err.message, 'error');
             }
         });
 
-        // Connect Rabby (or any other EVM wallet)
-        document.getElementById('connectRabby').addEventListener('click', async function() {
+        // Connect Rabby / Other - removed, using single EVM option
+
+        // Universal EVM wallet connector
+        async function connectEVMWallet(preferredName) {
             try {
-                let provider = null;
-                
-                // Method 1: Check for multiple providers
-                if (window.ethereum?.providers?.length) {
-                    provider = window.ethereum.providers.find(p => p.isRabby);
-                    if (!provider) {
-                        provider = window.ethereum.providers.find(p => !p.isMetaMask);
-                    }
+                if (!window.ethereum) {
+                    throw new Error('No wallet found. Please install MetaMask or another EVM wallet.');
                 }
                 
-                // Method 2: Direct check
-                if (!provider && window.ethereum?.isRabby) {
-                    provider = window.ethereum;
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No accounts found');
                 }
                 
-                // Method 3: Fallback to any ethereum provider
-                if (!provider && window.ethereum) {
-                    provider = window.ethereum;
-                }
-                
-                if (!provider) {
-                    throw new Error('No EVM wallet found. Please install a wallet.');
-                }
-                
-                const accounts = await provider.request({ method: 'eth_requestAccounts' });
-                if (accounts.length === 0) throw new Error('No accounts found');
-                
-                currentWallet = provider.isRabby ? 'Rabby' : 'Wallet';
-                currentProvider = provider;
+                currentWallet = preferredName;
+                currentProvider = window.ethereum;
                 currentAddress = accounts[0];
                 
                 updateWalletUI();
                 showStatus('Connected to ' + currentWallet + '!', 'success');
                 
-                provider.on('accountsChanged', handleAccountChange);
-                provider.on('chainChanged', () => location.reload());
+                window.ethereum.on('accountsChanged', handleAccountChange);
+                window.ethereum.on('chainChanged', () => location.reload());
             } catch (err) {
-                showStatus('Wallet error: ' + err.message, 'error');
+                if (err.code === 4001) {
+                    showStatus('Connection rejected by user', 'error');
+                } else {
+                    showStatus(err.message, 'error');
+                }
             }
-        });
+        }
 
         function handleAccountChange(accounts) {
             if (accounts.length === 0) {
@@ -1555,6 +1497,3 @@
     </script>
 </body>
 </html>
-
-
-
