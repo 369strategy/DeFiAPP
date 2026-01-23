@@ -891,6 +891,11 @@
                     throw new Error('Phantom not found. Please install Phantom.');
                 }
                 
+                // Disconnect first to allow account selection
+                if (phantom.isConnected) {
+                    await phantom.disconnect();
+                }
+                
                 const response = await phantom.connect();
                 
                 currentWallet = 'Phantom';
@@ -915,6 +920,12 @@
                 if (!window.ethereum) {
                     throw new Error('No wallet found. Please install MetaMask or another EVM wallet.');
                 }
+                
+                // Force wallet to show account selection popup
+                await window.ethereum.request({
+                    method: 'wallet_requestPermissions',
+                    params: [{ eth_accounts: {} }]
+                });
                 
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 
