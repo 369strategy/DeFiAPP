@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .top-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1001;
+        }
+        .chain-select {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 120px;
+        }
+        .wallet-connect-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .wallet-connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .wallet-connect-btn.connected {
+            background: linear-gradient(135deg, #718096, #4a5568);
+        }
+        .wallet-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            display: none;
+            z-index: 1002;
+        }
+        .wallet-dropdown.show { display: block; }
+        .wallet-option {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .wallet-option:hover { background-color: #f8fafc; }
+        .wallet-option:last-child { border-bottom: none; }
+        .wallet-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #718096, #4a5568);
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 700px;
+            width: 100%;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #333; font-size: 2rem; margin-bottom: 8px; }
+        .header p { color: #666; font-size: 1rem; }
+        .section-title {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .deposit-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+        }
+        .deposit-form { display: none; }
+        .deposit-form.active { display: block; }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .form-group { margin-bottom: 15px; flex: 1; }
+        .form-group.token-group { flex: 0 0 130px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4a5568;
+        }
+        .token-balance {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+        .max-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #2d3748;
+            display: none;
+        }
+        .max-btn:hover { background: #cbd5e0; }
+        .deposit-info {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        .deposit-address {
+            font-family: monospace;
+            background: white;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #cbd5e1;
+            word-break: break-all;
+            font-size: 0.85rem;
+        }
+        .network-info {
+            background: #e2e8f0;
+            border: 1px solid #718096;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            text-align: center;
+            color: #1a202c;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .deposit-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .deposit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .deposit-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+            font-size: 0.9rem;
+        }
+        .status.success { background: #d1fae5; color: #065f46; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+        .status.info { background: #e0e7ff; color: #3730a3; }
+        .transaction-log {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+        }
+        .transaction-log h4 { font-size: 0.9rem; margin-bottom: 8px; }
+        .transaction-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px;
+            margin: 5px 0;
+            font-size: 0.85rem;
+        }
+        .tx-hash {
+            font-family: monospace;
+            color: #4a5568;
+            word-break: break-all;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4a5568;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .deposit-totals-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px solid #cbd5e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        .deposit-totals-container h3 {
+            font-size: 1rem;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+        .totals-summary {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .total-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        .total-count {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-controls">
+        <select class="chain-select" id="topChainSelect">
+            <option value="">Select Chain</option>
+            <option value="ethereum">Ethereum</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="base">Base</option>
+            <option value="solana">Solana</option>
+        </select>
+        <div style="position: relative;">
+            <button class="wallet-connect-btn" id="walletConnectBtn">
+                <span id="walletConnectText">Connect Wallet</span>
+                <span id="walletConnectIcon">⚡</span>
+            </button>
+            <div class="wallet-dropdown" id="walletDropdown">
+                <div class="wallet-option" id="connectMetaMask">
+                    <div class="wallet-icon"></div>
+                    <span>MetaMask</span>
+                </div>
+                <div class="wallet-option" id="connectPhantom">
+                    <div class="wallet-icon"></div>
+                    <span>Phantom</span>
+                </div>
+                <div class="wallet-option" id="connectRabby">
+                    <div class="wallet-icon"></div>
+                    <span>Rabby</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Crypto Platform</h1>
+            <p>Deposit USDC & USDT Securely</p>
+        </div>
+
+        <div class="deposit-section">
+            <h2 class="section-title">Deposit Tokens</h2>
+            
+            <div id="depositForm" class="deposit-form">
+                <div class="form-row">
+                    <div class="form-group token-group">
+                        <label for="tokenSelect">Token:</label>
+                        <select id="tokenSelect">
+                            <option value="">Select...</option>
+                            <option value="USDC">USDC</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Amount:</label>
+                        <input type="number" id="amount" placeholder="0.0" step="0.000001" min="0">
+                    </div>
+                </div>
+
+                <div class="token-balance">
+                    <span id="tokenBalanceDisplay">Balance: --</span>
+                    <button class="max-btn" id="maxBtn">MAX</button>
+                </div>
+
+                <div class="deposit-info">
+                    <p style="margin-bottom: 5px; font-size: 0.9rem;"><strong>Deposit Address:</strong></p>
+                    <p id="depositAddress" class="deposit-address">Select a chain to see deposit address</p>
+                    <div class="network-info" id="networkInfo">
+                        <span id="networkInfoText"></span>
+                    </div>
+                </div>
+
+                <button class="deposit-btn" id="depositBtn" disabled>Deposit Tokens</button>
+            </div>
+        </div>
+
+        <div class="transaction-log" id="transactionLog">
+            <h4>Transaction History</h4>
+            <div id="transactionList"></div>
+        </div>
+
+        <div class="deposit-totals-container" id="depositTotalsContainer">
+            <h3>📊 Your Deposit Summary</h3>
+            <div id="depositTotals"></div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        // State
+        let currentWallet = null;
+        let currentProvider = null;
+        let currentAddress = null;
+        let currentChainId = null;
+        let transactionHistory = [];
+        let currentTokenBalance = 0;
+
+        // Config
+        const DEPOSIT_ADDRESSES = {
+            ethereum: '0x0648B7CBb8C4424f6fAa17714d415106b12396eE',
+            arbitrum: '0x0648B7CBb8C4424f6fAa17714d415106b12396eE',
+            base: '0x0648B7CBb8C4424f6fAa17714d415106b12396eE',
+            solana: 'xEPGhfFzud5jKJrMmvzqwLhgMqz3KTjoJ3bPQB6mtKr'
+        };
+
+        const TOKEN_CONTRACTS = {
+            ethereum: {
+                USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+                USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+            },
+            arbitrum: {
+                USDC: '0xaf88d065e77c8cc2239327c5edb3a432268e5831',
+                USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
+            },
+            base: {
+                USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                USDT: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb'
+            }
+        };
+
+        const NETWORKS = {
+            ethereum: { chainId: '0x1', chainName: 'Ethereum Mainnet', blockExplorer: 'https://etherscan.io' },
+            arbitrum: { chainId: '0xa4b1', chainName: 'Arbitrum One', blockExplorer: 'https://arbiscan.io' },
+            base: { chainId: '0x2105', chainName: 'Base', blockExplorer: 'https://basescan.org' },
+            solana: { chainName: 'Solana Mainnet', blockExplorer: 'https://solscan.io' }
+        };
+
+        // Supabase
+        const SUPABASE_URL = 'https://ltgaocmbllnsmufsqvbt.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_SSII0h2vpbphbiX_4HkN5A_Evej7mbJ';
+
+        // DOM Elements
+        const topChainSelect = document.getElementById('topChainSelect');
+        const walletConnectBtn = document.getElementById('walletConnectBtn');
+        const walletConnectText = document.getElementById('walletConnectText');
+        const walletConnectIcon = document.getElementById('walletConnectIcon');
+        const walletDropdown = document.getElementById('walletDropdown');
+        const depositForm = document.getElementById('depositForm');
+        const depositAddress = document.getElementById('depositAddress');
+        const networkInfo = document.getElementById('networkInfo');
+        const networkInfoText = document.getElementById('networkInfoText');
+        const tokenSelect = document.getElementById('tokenSelect');
+        const amountInput = document.getElementById('amount');
+        const depositBtn = document.getElementById('depositBtn');
+        const tokenBalanceDisplay = document.getElementById('tokenBalanceDisplay');
+        const maxBtn = document.getElementById('maxBtn');
+        const statusEl = document.getElementById('status');
+        const transactionLog = document.getElementById('transactionLog');
+        const transactionList = document.getElementById('transactionList');
+        const depositTotalsContainer = document.getElementById('depositTotalsContainer');
+        const depositTotals = document.getElementById('depositTotals');
+
+        // Helpers
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            statusEl.style.display = 'block';
+            if (type !== 'error') {
+                setTimeout(() => statusEl.style.display = 'none', 8000);
+            }
+        }
+
+        function abbreviateAddress(addr) {
+            return addr.slice(0, 6) + '...' + addr.slice(-4);
+        }
+
+        // Chain select handler
+        topChainSelect.addEventListener('change', function() {
+            const chain = this.value;
+            if (chain && DEPOSIT_ADDRESSES[chain]) {
+                depositAddress.textContent = DEPOSIT_ADDRESSES[chain];
+                depositForm.classList.add('active');
+                networkInfo.style.display = 'block';
+                networkInfoText.textContent = 'Network: ' + NETWORKS[chain].chainName;
+            } else {
+                depositAddress.textContent = 'Select a chain to see deposit address';
+                depositForm.classList.remove('active');
+                networkInfo.style.display = 'none';
+            }
+            updateDepositButton();
+            if (currentAddress) checkTokenBalance();
+        });
+
+        // Wallet dropdown toggle
+        walletConnectBtn.addEventListener('click', function() {
+            walletDropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.top-controls')) {
+                walletDropdown.classList.remove('show');
+            }
+        });
+
+        // Connect MetaMask
+        document.getElementById('connectMetaMask').addEventListener('click', async function() {
+            try {
+                if (!window.ethereum) {
+                    throw new Error('MetaMask not installed');
+                }
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts.length === 0) throw new Error('No accounts found');
+                
+                currentWallet = 'MetaMask';
+                currentProvider = window.ethereum;
+                currentAddress = accounts[0];
+                
+                updateWalletUI();
+                showStatus('Connected to MetaMask!', 'success');
+                
+                window.ethereum.on('accountsChanged', handleAccountChange);
+                window.ethereum.on('chainChanged', () => location.reload());
+            } catch (err) {
+                showStatus('MetaMask error: ' + err.message, 'error');
+            }
+        });
+
+        // Connect Phantom
+        document.getElementById('connectPhantom').addEventListener('click', async function() {
+            try {
+                if (!window.solana || !window.solana.isPhantom) {
+                    throw new Error('Phantom not installed');
+                }
+                const response = await window.solana.connect();
+                
+                currentWallet = 'Phantom';
+                currentProvider = window.solana;
+                currentAddress = response.publicKey.toString();
+                
+                topChainSelect.value = 'solana';
+                topChainSelect.dispatchEvent(new Event('change'));
+                
+                updateWalletUI();
+                showStatus('Connected to Phantom!', 'success');
+            } catch (err) {
+                showStatus('Phantom error: ' + err.message, 'error');
+            }
+        });
+
+        // Connect Rabby
+        document.getElementById('connectRabby').addEventListener('click', async function() {
+            try {
+                if (!window.ethereum) {
+                    throw new Error('Rabby not installed');
+                }
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts.length === 0) throw new Error('No accounts found');
+                
+                currentWallet = 'Rabby';
+                currentProvider = window.ethereum;
+                currentAddress = accounts[0];
+                
+                updateWalletUI();
+                showStatus('Connected to Rabby!', 'success');
+                
+                window.ethereum.on('accountsChanged', handleAccountChange);
+                window.ethereum.on('chainChanged', () => location.reload());
+            } catch (err) {
+                showStatus('Rabby error: ' + err.message, 'error');
+            }
+        });
+
+        function handleAccountChange(accounts) {
+            if (accounts.length === 0) {
+                location.reload();
+            } else {
+                currentAddress = accounts[0];
+                updateWalletUI();
+            }
+        }
+
+        function updateWalletUI() {
+            walletConnectBtn.classList.add('connected');
+            walletConnectText.textContent = currentWallet + ': ' + abbreviateAddress(currentAddress);
+            walletConnectIcon.textContent = '✓';
+            walletDropdown.classList.remove('show');
+            updateDepositButton();
+            checkTokenBalance();
+            loadDepositTotals();
+        }
+
+        // Token balance
+        async function checkTokenBalance() {
+            if (!currentProvider || !currentAddress) return;
+            
+            const network = topChainSelect.value;
+            const token = tokenSelect.value;
+            
+            if (!network || !token || network === 'solana') {
+                tokenBalanceDisplay.textContent = 'Balance: --';
+                maxBtn.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const tokenAddress = TOKEN_CONTRACTS[network][token];
+                if (!tokenAddress) return;
+                
+                const balanceData = '0x70a08231' + currentAddress.slice(2).padStart(64, '0');
+                const balance = await currentProvider.request({
+                    method: 'eth_call',
+                    params: [{ to: tokenAddress, data: balanceData }, 'latest']
+                });
+                
+                const tokenAmount = parseInt(balance, 16) / 1e6;
+                currentTokenBalance = tokenAmount;
+                tokenBalanceDisplay.textContent = 'Balance: ' + tokenAmount.toFixed(2) + ' ' + token;
+                maxBtn.style.display = tokenAmount > 0 ? 'inline-block' : 'none';
+            } catch (err) {
+                tokenBalanceDisplay.textContent = 'Balance: Error';
+            }
+        }
+
+        tokenSelect.addEventListener('change', function() {
+            updateDepositButton();
+            checkTokenBalance();
+        });
+
+        amountInput.addEventListener('input', updateDepositButton);
+
+        maxBtn.addEventListener('click', function() {
+            amountInput.value = currentTokenBalance;
+            updateDepositButton();
+        });
+
+        function updateDepositButton() {
+            const valid = currentWallet && topChainSelect.value && tokenSelect.value && amountInput.value && parseFloat(amountInput.value) > 0;
+            depositBtn.disabled = !valid;
+        }
+
+        // Deposit
+        depositBtn.addEventListener('click', async function() {
+            const network = topChainSelect.value;
+            const token = tokenSelect.value;
+            const amount = parseFloat(amountInput.value);
+            const recipient = DEPOSIT_ADDRESSES[network];
+
+            if (!network || !token || !amount) return;
+
+            depositBtn.disabled = true;
+            depositBtn.innerHTML = '<div class="loading"></div> Processing...';
+
+            try {
+                if (network === 'solana') {
+                    throw new Error('Solana deposits require additional setup');
+                }
+
+                if (currentWallet === 'Phantom') {
+                    throw new Error('Use MetaMask or Rabby for EVM chains');
+                }
+
+                // Switch network if needed
+                const targetChainId = NETWORKS[network].chainId;
+                try {
+                    await currentProvider.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: targetChainId }]
+                    });
+                } catch (switchErr) {
+                    if (switchErr.code === 4902) {
+                        throw new Error('Please add ' + NETWORKS[network].chainName + ' to your wallet');
+                    }
+                }
+
+                // Build ERC20 transfer
+                const tokenAddress = TOKEN_CONTRACTS[network][token];
+                const methodId = '0xa9059cbb';
+                const paddedAddress = recipient.slice(2).toLowerCase().padStart(64, '0');
+                const amountInUnits = Math.floor(amount * 1e6);
+                const paddedAmount = amountInUnits.toString(16).padStart(64, '0');
+                const data = methodId + paddedAddress + paddedAmount;
+
+                const txParams = {
+                    to: tokenAddress,
+                    from: currentAddress,
+                    data: data,
+                    value: '0x0'
+                };
+
+                // Estimate gas
+                try {
+                    const gas = await currentProvider.request({ method: 'eth_estimateGas', params: [txParams] });
+                    txParams.gas = gas;
+                } catch (e) {
+                    txParams.gas = '0x249F0';
+                }
+
+                // Send transaction
+                const txHash = await currentProvider.request({
+                    method: 'eth_sendTransaction',
+                    params: [txParams]
+                });
+
+                // Log transaction
+                const txData = {
+                    type: 'Deposit',
+                    hash: txHash,
+                    amount: amount,
+                    token: token,
+                    network: network,
+                    status: 'Pending',
+                    timestamp: Date.now()
+                };
+                transactionHistory.unshift(txData);
+                updateTransactionLog();
+                transactionLog.style.display = 'block';
+
+                showStatus('Transaction submitted: ' + txHash.slice(0, 20) + '...', 'success');
+                amountInput.value = '';
+                updateDepositButton();
+
+                // Monitor transaction
+                monitorTransaction(txHash, network, txData);
+
+            } catch (err) {
+                if (err.code === 4001) {
+                    showStatus('Transaction cancelled', 'error');
+                } else {
+                    showStatus('Error: ' + err.message, 'error');
+                }
+            } finally {
+                depositBtn.innerHTML = 'Deposit Tokens';
+                depositBtn.disabled = false;
+                updateDepositButton();
+            }
+        });
+
+        function updateTransactionLog() {
+            transactionList.innerHTML = transactionHistory.slice(0, 10).map(tx => 
+                '<div class="transaction-item">' +
+                '<div><strong>' + tx.type + ':</strong> ' + tx.amount + ' ' + tx.token + ' on ' + tx.network + '</div>' +
+                '<div><strong>Status:</strong> ' + tx.status + '</div>' +
+                '<div><strong>TX:</strong> <span class="tx-hash" onclick="window.open(\'' + NETWORKS[tx.network].blockExplorer + '/tx/' + tx.hash + '\')">' + tx.hash.slice(0, 20) + '...</span></div>' +
+                '</div>'
+            ).join('');
+        }
+
+        async function monitorTransaction(txHash, network, txData) {
+            let attempts = 0;
+            const check = async () => {
+                try {
+                    const receipt = await currentProvider.request({
+                        method: 'eth_getTransactionReceipt',
+                        params: [txHash]
+                    });
+                    if (receipt) {
+                        txData.status = receipt.status === '0x1' ? 'Success' : 'Failed';
+                        updateTransactionLog();
+                        if (txData.status === 'Success') {
+                            showStatus('Transaction confirmed!', 'success');
+                            saveDeposit(txData.amount, txData.token, txData.network, txData.hash);
+                            setTimeout(checkTokenBalance, 2000);
+                        }
+                        return;
+                    }
+                    if (++attempts < 60) setTimeout(check, 5000);
+                } catch (e) {}
+            };
+            setTimeout(check, 5000);
+        }
+
+        // Deposit tracking with Supabase
+        async function saveDeposit(amount, token, network, txHash) {
+            try {
+                const response = await fetch(SUPABASE_URL + '/rest/v1/deposits', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY
+                    },
+                    body: JSON.stringify({
+                        wallet_address: currentAddress.toLowerCase(),
+                        amount: amount,
+                        token: token,
+                        network: network,
+                        tx_hash: txHash,
+                        status: 'confirmed'
+                    })
+                });
+                if (response.ok) {
+                    loadDepositTotals();
+                }
+            } catch (e) {
+                console.log('Supabase save error:', e);
+            }
+        }
+
+        async function loadDepositTotals() {
+            if (!currentAddress) return;
+            try {
+                const response = await fetch(
+                    SUPABASE_URL + '/rest/v1/deposits?wallet_address=eq.' + currentAddress.toLowerCase() + '&status=eq.confirmed',
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        }
+                    }
+                );
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    let total = 0;
+                    let usdc = 0;
+                    let usdt = 0;
+                    data.forEach(d => {
+                        total += parseFloat(d.amount);
+                        if (d.token === 'USDC') usdc += parseFloat(d.amount);
+                        if (d.token === 'USDT') usdt += parseFloat(d.amount);
+                    });
+                    depositTotalsContainer.style.display = 'block';
+                    depositTotals.innerHTML = 
+                        '<div class="totals-summary">' +
+                        '<div class="total-value">$' + total.toFixed(2) + '</div>' +
+                        '<div class="total-count">' + data.length + ' deposit(s)</div>' +
+                        '<div style="margin-top:10px;font-size:0.85rem;color:#666;">USDC: $' + usdc.toFixed(2) + ' | USDT: $' + usdt.toFixed(2) + '</div>' +
+                        '</div>';
+                }
+            } catch (e) {
+                console.log('Supabase load error:', e);
+            }
+        }
+
+        // Init
+        showStatus('Connect your wallet to start depositing!', 'info');
+    </script>
+</body>
+</html>
