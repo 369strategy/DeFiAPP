@@ -922,6 +922,121 @@
             color: #ff4444;
         }
 
+        .history-item-status.failed {
+            background: #ff444420;
+            color: #ff4444;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .modal-title {
+            font-size: 1rem;
+            color: #00ff88;
+            margin-bottom: 16px;
+        }
+
+        .modal-content {
+            font-size: 0.75rem;
+            color: #ccc;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 12px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+        }
+
+        .modal-content h4 {
+            color: #fff;
+            margin: 12px 0 8px 0;
+            font-size: 0.8rem;
+        }
+
+        .modal-content ul {
+            margin-left: 16px;
+            margin-bottom: 12px;
+        }
+
+        .modal-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 0.75rem;
+            color: #ccc;
+        }
+
+        .modal-checkbox input {
+            width: 18px;
+            height: 18px;
+            accent-color: #00ff88;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.cancel {
+            background: #333;
+            color: #fff;
+        }
+
+        .modal-btn.cancel:hover {
+            background: #444;
+        }
+
+        .modal-btn.confirm {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .modal-btn.confirm:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .modal-btn.confirm:not(:disabled):hover {
+            background: #00cc6a;
+        }
+
         /* Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -1124,6 +1239,78 @@
 
             <div class="history-list" id="historyList">
                 <div class="history-empty">No transactions yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms and Conditions Modal -->
+    <div class="modal-overlay" id="termsModal">
+        <div class="modal">
+            <h3 class="modal-title">Terms & Conditions</h3>
+            <div class="modal-content">
+                <h4>1. Acceptance of Terms</h4>
+                <p>By using this platform, you agree to these terms and conditions. If you do not agree, do not use this service.</p>
+                
+                <h4>2. Eligibility</h4>
+                <p>You must be at least 18 years old and legally permitted to use cryptocurrency services in your jurisdiction.</p>
+                
+                <h4>3. Deposit & Withdrawal</h4>
+                <ul>
+                    <li>Deposits are verified on-chain before being credited to your account.</li>
+                    <li>Withdrawals are processed manually and may take up to 24-48 hours.</li>
+                    <li>You may only withdraw to the same wallet address used for deposits.</li>
+                </ul>
+                
+                <h4>4. Risks</h4>
+                <ul>
+                    <li>Cryptocurrency transactions are irreversible.</li>
+                    <li>You are responsible for ensuring correct network and token selection.</li>
+                    <li>We are not liable for losses due to user error or market volatility.</li>
+                </ul>
+                
+                <h4>5. Prohibited Activities</h4>
+                <ul>
+                    <li>Money laundering or illegal activities.</li>
+                    <li>Attempting to manipulate or exploit the platform.</li>
+                    <li>Using funds from illegal sources.</li>
+                </ul>
+                
+                <h4>6. Privacy</h4>
+                <p>We collect wallet addresses and transaction data for operational purposes. We do not sell your data to third parties.</p>
+                
+                <h4>7. Modifications</h4>
+                <p>We reserve the right to modify these terms at any time. Continued use constitutes acceptance of modified terms.</p>
+            </div>
+            <div class="modal-checkbox">
+                <input type="checkbox" id="acceptTerms">
+                <label for="acceptTerms">I have read and agree to the Terms & Conditions</label>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="termsCancelBtn">Cancel</button>
+                <button class="modal-btn confirm" id="termsConfirmBtn" disabled>Continue to Deposit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wallet Verification Modal -->
+    <div class="modal-overlay" id="verifyModal">
+        <div class="modal">
+            <h3 class="modal-title">Verify Wallet Ownership</h3>
+            <div class="modal-content">
+                <p>To ensure the security of your funds, please sign a message to verify you own this wallet.</p>
+                <br>
+                <p><strong>This signature:</strong></p>
+                <ul>
+                    <li>Does NOT cost any gas fees</li>
+                    <li>Does NOT give us access to your funds</li>
+                    <li>Only proves you own this wallet address</li>
+                </ul>
+                <br>
+                <p>Your wallet will prompt you to sign a verification message.</p>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="verifyCancelBtn">Disconnect</button>
+                <button class="modal-btn confirm" id="verifyConfirmBtn">Sign to Verify</button>
             </div>
         </div>
     </div>
@@ -1453,7 +1640,186 @@
             updateDepositButton();
             checkTokenBalance();
             loadHistory('all');
-            checkVerification();
+            
+            // Check if wallet is verified, if not show verification modal
+            checkAndVerifyWallet();
+        }
+
+        // Check verification and prompt if needed
+        async function checkAndVerifyWallet() {
+            if (!currentAddress) return;
+            
+            try {
+                const response = await fetch(
+                    SUPABASE_URL + '/rest/v1/wallet_verifications?wallet_address=eq.' + currentAddress.toLowerCase(),
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        }
+                    }
+                );
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    // Already verified
+                    isWalletVerified = true;
+                    verificationSignature = data[0].signature;
+                    
+                    authStatus.className = 'auth-status verified';
+                    authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                    authBtn.style.display = 'none';
+                    withdrawFormFields.style.display = 'block';
+                    
+                    loadHistory('all');
+                } else {
+                    // Not verified - show verification modal
+                    verifyModal.classList.add('show');
+                }
+            } catch (e) {
+                console.log('Verification check error:', e);
+            }
+        }
+
+        // Verify modal - Cancel (disconnect)
+        verifyCancelBtn.addEventListener('click', function() {
+            verifyModal.classList.remove('show');
+            // Disconnect wallet
+            disconnectWallet();
+        });
+
+        // Verify modal - Sign to verify
+        verifyConfirmBtn.addEventListener('click', async function() {
+            verifyConfirmBtn.disabled = true;
+            verifyConfirmBtn.textContent = 'Please sign in wallet...';
+            
+            try {
+                const message = `Verify wallet ownership for DeFi Platform\n\nWallet: ${currentAddress}\nTimestamp: ${new Date().toISOString()}`;
+                
+                let signature;
+                if (currentWallet === 'Phantom') {
+                    const encodedMessage = new TextEncoder().encode(message);
+                    const signedMessage = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
+                    signature = btoa(String.fromCharCode(...signedMessage.signature));
+                } else {
+                    signature = await currentProvider.request({
+                        method: 'personal_sign',
+                        params: [message, currentAddress]
+                    });
+                }
+
+                // Save verification to Supabase
+                await fetch(SUPABASE_URL + '/rest/v1/wallet_verifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        wallet_address: currentAddress.toLowerCase(),
+                        signature: signature,
+                        verified_at: new Date().toISOString()
+                    })
+                });
+
+                isWalletVerified = true;
+                verificationSignature = signature;
+                
+                // Update withdrawal UI
+                authStatus.className = 'auth-status verified';
+                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                authBtn.style.display = 'none';
+                withdrawFormFields.style.display = 'block';
+                
+                verifyModal.classList.remove('show');
+                showStatus('Wallet verified successfully!', 'success');
+                
+            } catch (err) {
+                if (err.code === 4001) {
+                    showStatus('Verification cancelled', 'error');
+                } else {
+                    showStatus('Verification failed: ' + err.message, 'error');
+                }
+            } finally {
+                verifyConfirmBtn.disabled = false;
+                verifyConfirmBtn.textContent = 'Sign to Verify';
+            }
+        });
+
+        // Disconnect wallet function
+        async function disconnectWallet() {
+            // Disconnect Phantom if connected
+            try {
+                if (window.phantom?.solana?.isConnected) {
+                    await window.phantom.solana.disconnect();
+                }
+                if (window.solana?.isConnected) {
+                    await window.solana.disconnect();
+                }
+            } catch (e) {}
+            
+            // Revoke EVM wallet permissions
+            try {
+                if (window.ethereum) {
+                    await window.ethereum.request({
+                        method: 'wallet_revokePermissions',
+                        params: [{ eth_accounts: {} }]
+                    });
+                }
+            } catch (e) {}
+            
+            // Clear all state
+            currentWallet = null;
+            currentProvider = null;
+            currentAddress = null;
+            currentChainId = null;
+            isWalletVerified = false;
+            verificationSignature = null;
+            
+            // Reset UI
+            walletConnectBtn.classList.remove('connected');
+            walletConnectText.textContent = 'Connect Wallet';
+            walletConnectIcon.textContent = '⚡';
+            disconnectBtn.style.display = 'none';
+            
+            depositForm.classList.remove('active');
+            tokenBalanceDisplay.textContent = 'Balance: --';
+            maxBtn.style.display = 'none';
+            
+            // Reset chain dropdown
+            chainConnectBtn.innerHTML = '<span>Select Chain</span><span>▼</span>';
+            chainConnectBtn.classList.remove('selected');
+            topChainSelect.value = '';
+            document.querySelectorAll('.chain-option').forEach(o => o.classList.remove('selected'));
+            
+            // Reset token pills
+            document.querySelectorAll('#depositContent .token-pill').forEach(p => p.classList.remove('active'));
+            document.getElementById('tokenPillUSDC')?.classList.add('active');
+            tokenSelect.value = 'USDC';
+            
+            document.querySelectorAll('#withdrawContent .token-pill').forEach(p => p.classList.remove('active'));
+            document.getElementById('withdrawPillUSDC')?.classList.add('active');
+            withdrawToken.value = 'USDC';
+            
+            // Reset hero stats
+            document.getElementById('heroTotalDeposited').textContent = '$0.00';
+            document.getElementById('heroDepositCount').textContent = '0';
+            
+            // Reset withdraw section
+            authStatus.className = 'auth-status';
+            authStatus.innerHTML = '🔐 Please verify wallet ownership to request withdrawals';
+            authBtn.style.display = 'block';
+            authBtn.disabled = false;
+            authBtn.textContent = 'Sign Message to Verify';
+            withdrawFormFields.style.display = 'none';
+            
+            // Hide history card
+            historyCard.style.display = 'none';
+            historyList.innerHTML = '<div class="history-empty">No transactions yet</div>';
+            
+            showStatus('Select a chain and connect your wallet to start!', 'info');
         }
 
         // Token balance
@@ -1500,7 +1866,46 @@
             depositBtn.disabled = !valid;
         }
 
-        // Deposit
+        // Terms Modal Elements
+        const termsModal = document.getElementById('termsModal');
+        const acceptTermsCheckbox = document.getElementById('acceptTerms');
+        const termsCancelBtn = document.getElementById('termsCancelBtn');
+        const termsConfirmBtn = document.getElementById('termsConfirmBtn');
+
+        // Verify Modal Elements
+        const verifyModal = document.getElementById('verifyModal');
+        const verifyCancelBtn = document.getElementById('verifyCancelBtn');
+        const verifyConfirmBtn = document.getElementById('verifyConfirmBtn');
+
+        // Pending deposit data
+        let pendingDepositData = null;
+
+        // Terms checkbox enables confirm button
+        acceptTermsCheckbox.addEventListener('change', function() {
+            termsConfirmBtn.disabled = !this.checked;
+        });
+
+        // Terms cancel
+        termsCancelBtn.addEventListener('click', function() {
+            termsModal.classList.remove('show');
+            acceptTermsCheckbox.checked = false;
+            termsConfirmBtn.disabled = true;
+            pendingDepositData = null;
+        });
+
+        // Terms confirm - proceed with deposit
+        termsConfirmBtn.addEventListener('click', async function() {
+            termsModal.classList.remove('show');
+            acceptTermsCheckbox.checked = false;
+            termsConfirmBtn.disabled = true;
+            
+            if (pendingDepositData) {
+                await executeDeposit(pendingDepositData);
+                pendingDepositData = null;
+            }
+        });
+
+        // Deposit button - shows terms first
         depositBtn.addEventListener('click', async function() {
             const network = topChainSelect.value;
             const token = tokenSelect.value;
@@ -1509,18 +1914,29 @@
 
             if (!network || !token || !amount) return;
 
+            if (network === 'solana') {
+                showStatus('Solana deposits require additional setup', 'error');
+                return;
+            }
+
+            if (currentWallet === 'Phantom') {
+                showStatus('Use MetaMask or Rabby for EVM chains', 'error');
+                return;
+            }
+
+            // Store deposit data and show terms
+            pendingDepositData = { network, token, amount, recipient };
+            termsModal.classList.add('show');
+        });
+
+        // Execute deposit after terms accepted
+        async function executeDeposit(data) {
+            const { network, token, amount, recipient } = data;
+
             depositBtn.disabled = true;
             depositBtn.innerHTML = '<div class="loading"></div> Processing...';
 
             try {
-                if (network === 'solana') {
-                    throw new Error('Solana deposits require additional setup');
-                }
-
-                if (currentWallet === 'Phantom') {
-                    throw new Error('Use MetaMask or Rabby for EVM chains');
-                }
-
                 // Switch network if needed
                 const targetChainId = NETWORKS[network].chainId;
                 try {
@@ -1540,12 +1956,12 @@
                 const paddedAddress = recipient.slice(2).toLowerCase().padStart(64, '0');
                 const amountInUnits = Math.floor(amount * 1e6);
                 const paddedAmount = amountInUnits.toString(16).padStart(64, '0');
-                const data = methodId + paddedAddress + paddedAmount;
+                const dataHex = methodId + paddedAddress + paddedAmount;
 
                 const txParams = {
                     to: tokenAddress,
                     from: currentAddress,
-                    data: data,
+                    data: dataHex,
                     value: '0x0'
                 };
 
@@ -1592,7 +2008,78 @@
                 depositBtn.disabled = false;
                 updateDepositButton();
             }
-        });
+        }
+
+        // ERC20 Transfer event signature
+        const TRANSFER_EVENT_SIGNATURE = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+        // Verify deposit on blockchain
+        async function verifyDepositOnChain(txHash, network, expectedAmount, expectedToken) {
+            try {
+                // Get transaction receipt
+                const receipt = await currentProvider.request({
+                    method: 'eth_getTransactionReceipt',
+                    params: [txHash]
+                });
+
+                if (!receipt || receipt.status !== '0x1') {
+                    return { valid: false, reason: 'Transaction failed or not found' };
+                }
+
+                // Get expected token contract and deposit address
+                const expectedTokenContract = TOKEN_CONTRACTS[network]?.[expectedToken]?.toLowerCase();
+                const expectedDepositAddress = DEPOSIT_ADDRESSES[network]?.toLowerCase();
+
+                if (!expectedTokenContract || !expectedDepositAddress) {
+                    return { valid: false, reason: 'Invalid network or token' };
+                }
+
+                // Find Transfer event in logs
+                let transferFound = false;
+                let verifiedAmount = 0;
+
+                for (const log of receipt.logs) {
+                    // Check if this is a Transfer event from the correct token contract
+                    if (log.topics[0] === TRANSFER_EVENT_SIGNATURE &&
+                        log.address.toLowerCase() === expectedTokenContract) {
+                        
+                        // Decode the 'to' address from topic[2] (remove padding)
+                        const toAddress = '0x' + log.topics[2].slice(26).toLowerCase();
+                        
+                        // Check if sent to our deposit address
+                        if (toAddress === expectedDepositAddress) {
+                            // Decode amount from data (handle both 6 and 18 decimals)
+                            const rawAmount = BigInt(log.data);
+                            const decimals = (expectedToken === 'USDC' || expectedToken === 'USDT') ? 6 : 18;
+                            verifiedAmount = Number(rawAmount) / Math.pow(10, decimals);
+                            
+                            transferFound = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!transferFound) {
+                    return { valid: false, reason: 'No valid transfer to deposit address found' };
+                }
+
+                // Verify amount matches (allow small rounding difference)
+                if (Math.abs(verifiedAmount - expectedAmount) > 0.01) {
+                    return { valid: false, reason: `Amount mismatch. Expected: ${expectedAmount}, Found: ${verifiedAmount}` };
+                }
+
+                return { 
+                    valid: true, 
+                    verifiedAmount: verifiedAmount,
+                    tokenContract: expectedTokenContract,
+                    depositAddress: expectedDepositAddress
+                };
+
+            } catch (e) {
+                console.error('Verification error:', e);
+                return { valid: false, reason: 'Verification failed: ' + e.message };
+            }
+        }
 
         async function monitorTransaction(txHash, network, txData) {
             let attempts = 0;
@@ -1602,13 +2089,32 @@
                         method: 'eth_getTransactionReceipt',
                         params: [txHash]
                     });
+                    
                     if (receipt) {
-                        txData.status = receipt.status === '0x1' ? 'Success' : 'Failed';
-                        if (txData.status === 'Success') {
-                            showStatus('Transaction confirmed!', 'success');
-                            // Save deposit after blockchain confirmation
-                            saveDeposit(txData.amount, txData.token, txData.network, txData.hash);
-                            setTimeout(checkTokenBalance, 2000);
+                        if (receipt.status === '0x1') {
+                            // Transaction successful - now verify on-chain
+                            showStatus('Verifying deposit on blockchain...', 'success');
+                            
+                            const verification = await verifyDepositOnChain(
+                                txHash, 
+                                network, 
+                                txData.amount, 
+                                txData.token
+                            );
+
+                            if (verification.valid) {
+                                showStatus('Deposit verified and confirmed!', 'success');
+                                // Save as CONFIRMED - verified on blockchain
+                                saveDeposit(verification.verifiedAmount, txData.token, network, txHash, 'confirmed');
+                                setTimeout(checkTokenBalance, 2000);
+                            } else {
+                                showStatus('Verification failed: ' + verification.reason, 'error');
+                                // Save as FAILED - suspicious transaction
+                                saveDeposit(txData.amount, txData.token, network, txHash, 'failed');
+                            }
+                        } else {
+                            txData.status = 'Failed';
+                            showStatus('Transaction failed on blockchain', 'error');
                         }
                         return;
                     }
@@ -1621,80 +2127,7 @@
         }
 
         // Disconnect wallet - HARD RESET
-        disconnectBtn.addEventListener('click', async function() {
-            // Disconnect Phantom if connected
-            try {
-                if (window.phantom?.solana?.isConnected) {
-                    await window.phantom.solana.disconnect();
-                }
-                if (window.solana?.isConnected) {
-                    await window.solana.disconnect();
-                }
-            } catch (e) {}
-            
-            // Revoke EVM wallet permissions
-            try {
-                if (window.ethereum) {
-                    await window.ethereum.request({
-                        method: 'wallet_revokePermissions',
-                        params: [{ eth_accounts: {} }]
-                    });
-                }
-            } catch (e) {
-                // Some wallets don't support this
-            }
-            
-            // Clear all state
-            currentWallet = null;
-            currentProvider = null;
-            currentAddress = null;
-            currentChainId = null;
-            isWalletVerified = false;
-            verificationSignature = null;
-            
-            // Reset UI
-            walletConnectBtn.classList.remove('connected');
-            walletConnectText.textContent = 'Connect Wallet';
-            walletConnectIcon.textContent = '⚡';
-            disconnectBtn.style.display = 'none';
-            
-            depositForm.classList.remove('active');
-            tokenBalanceDisplay.textContent = 'Balance: --';
-            maxBtn.style.display = 'none';
-            
-            // Reset chain dropdown
-            chainConnectBtn.innerHTML = '<span>Select Chain</span><span>▼</span>';
-            chainConnectBtn.classList.remove('selected');
-            topChainSelect.value = '';
-            document.querySelectorAll('.chain-option').forEach(o => o.classList.remove('selected'));
-            
-            // Reset token pills to USDC default
-            document.querySelectorAll('#depositContent .token-pill').forEach(p => p.classList.remove('active'));
-            document.getElementById('tokenPillUSDC').classList.add('active');
-            tokenSelect.value = 'USDC';
-            
-            document.querySelectorAll('#withdrawContent .token-pill').forEach(p => p.classList.remove('active'));
-            document.getElementById('withdrawPillUSDC').classList.add('active');
-            withdrawToken.value = 'USDC';
-            
-            // Reset hero stats
-            document.getElementById('heroTotalDeposited').textContent = '$0.00';
-            document.getElementById('heroDepositCount').textContent = '0';
-            
-            // Reset withdraw section
-            authStatus.className = 'auth-status';
-            authStatus.innerHTML = '🔐 Please verify wallet ownership to request withdrawals';
-            authBtn.style.display = 'block';
-            authBtn.disabled = false;
-            authBtn.textContent = 'Sign Message to Verify';
-            withdrawFormFields.style.display = 'none';
-            
-            // Hide history card
-            historyCard.style.display = 'none';
-            historyList.innerHTML = '<div class="history-empty">No transactions yet</div>';
-            
-            showStatus('Select a chain and connect your wallet to start!', 'info');
-        });
+        disconnectBtn.addEventListener('click', disconnectWallet);
 
         // Tab switching
         depositTab.addEventListener('click', function() {
@@ -1792,38 +2225,6 @@
                 });
             } catch (e) {
                 console.log('Verification save error:', e);
-            }
-        }
-
-        // Check if wallet is already verified
-        async function checkVerification() {
-            if (!currentAddress) return;
-            
-            try {
-                const response = await fetch(
-                    SUPABASE_URL + '/rest/v1/wallet_verifications?wallet_address=eq.' + currentAddress.toLowerCase(),
-                    {
-                        headers: {
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': 'Bearer ' + SUPABASE_KEY
-                        }
-                    }
-                );
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    isWalletVerified = true;
-                    verificationSignature = data[0].signature;
-                    
-                    authStatus.className = 'auth-status verified';
-                    authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
-                    authBtn.style.display = 'none';
-                    withdrawFormFields.style.display = 'block';
-                    
-                    loadHistory('all');
-                }
-            } catch (e) {
-                console.log('Verification check error:', e);
             }
         }
 
@@ -2118,10 +2519,8 @@
         }
 
         // Deposit tracking with Supabase
-        async function saveDeposit(amount, token, network, txHash) {
+        async function saveDeposit(amount, token, network, txHash, status = 'pending') {
             try {
-                console.log('Saving deposit:', { amount, token, network, txHash, wallet: currentAddress });
-                
                 const response = await fetch(SUPABASE_URL + '/rest/v1/deposits', {
                     method: 'POST',
                     headers: {
@@ -2136,23 +2535,18 @@
                         token: token,
                         network: network,
                         tx_hash: txHash,
-                        status: 'confirmed'
+                        status: status  // 'confirmed' if verified, 'failed' if suspicious
                     })
                 });
-                
-                const result = await response.json();
-                console.log('Save deposit response:', response.status, result);
                 
                 if (response.ok) {
                     loadHistory('all');
                     loadAvailableBalance();
                 } else {
-                    console.error('Failed to save deposit:', result);
-                    alert('Supabase Error: ' + JSON.stringify(result));
+                    console.error('Failed to save deposit');
                 }
             } catch (e) {
-                console.error('Supabase save error:', e);
-                alert('Network Error: ' + e.message);
+                console.error('Save error:', e);
             }
         }
 
