@@ -1292,29 +1292,6 @@
         </div>
     </div>
 
-    <!-- Wallet Verification Modal -->
-    <div class="modal-overlay" id="verifyModal">
-        <div class="modal">
-            <h3 class="modal-title">Verify Wallet Ownership</h3>
-            <div class="modal-content">
-                <p>To ensure the security of your funds, please sign a message to verify you own this wallet.</p>
-                <br>
-                <p><strong>This signature:</strong></p>
-                <ul>
-                    <li>Does NOT cost any gas fees</li>
-                    <li>Does NOT give us access to your funds</li>
-                    <li>Only proves you own this wallet address</li>
-                </ul>
-                <br>
-                <p>Your wallet will prompt you to sign a verification message.</p>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-btn cancel" id="verifyCancelBtn">Disconnect</button>
-                <button class="modal-btn confirm" id="verifyConfirmBtn">Sign to Verify</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // State
         let currentWallet = null;
@@ -1324,6 +1301,42 @@
         let currentTokenBalance = 0;
         let isWalletVerified = false;
         let verificationSignature = null;
+
+        // Session timeout (15 minutes = 900000ms)
+        const SESSION_TIMEOUT = 15 * 60 * 1000;
+        let sessionTimer = null;
+        let lastActivity = Date.now();
+
+        // Reset session timer on activity
+        function resetSessionTimer() {
+            lastActivity = Date.now();
+            sessionStorage.setItem('lastActivity', lastActivity);
+            
+            if (sessionTimer) clearTimeout(sessionTimer);
+            
+            if (currentAddress) {
+                sessionTimer = setTimeout(() => {
+                    showStatus('Session expired due to inactivity', 'error');
+                    disconnectWallet();
+                }, SESSION_TIMEOUT);
+            }
+        }
+
+        // Track user activity
+        document.addEventListener('click', resetSessionTimer);
+        document.addEventListener('keypress', resetSessionTimer);
+        document.addEventListener('scroll', resetSessionTimer);
+
+        // Check if session expired on page load
+        function checkSessionExpiry() {
+            const lastAct = sessionStorage.getItem('lastActivity');
+            if (lastAct && (Date.now() - parseInt(lastAct)) > SESSION_TIMEOUT) {
+                // Session expired
+                sessionStorage.clear();
+                return true;
+            }
+            return false;
+        }
 
         // Config
         const DEPOSIT_ADDRESSES = {
@@ -1644,52 +1657,123 @@
             // Hide the top status message
             document.getElementById('topStatus').classList.add('hidden');
             
+            // Save wallet session
+            sessionStorage.setItem('walletSession', JSON.stringify({
+                wallet: currentWallet,
+                address: currentAddress,
+                chain: topChainSelect.value
+            }));
+            
+            // Start session timer
+            resetSessionTimer();
+            
             updateDepositButton();
             checkTokenBalance();
             loadHistory('all');
             
-            // Check if wallet is verified, if not show verification modal
+            // Check if wallet is verified this session
             checkAndVerifyWallet();
         }
 
-        // Check verification and prompt if needed
+        // Check verification and prompt if needed (session-based, not Supabase)
         async function checkAndVerifyWallet() {
             if (!currentAddress) return;
             
-            try {
-                const response = await fetch(
-                    SUPABASE_URL + '/rest/v1/wallet_verifications?wallet_address=eq.' + currentAddress.toLowerCase(),
-                    {
-                        headers: {
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': 'Bearer ' + SUPABASE_KEY
-                        }
-                    }
-                );
-                const data = await response.json();
+            // Check if verified THIS SESSION
+            const sessionVerified = sessionStorage.getItem('walletVerified_' + currentAddress.toLowerCase());
+            
+            if (sessionVerified) {
+                // Already verified this session
+                isWalletVerified = true;
+                verificationSignature = sessionVerified;
                 
-                if (data && data.length > 0) {
-                    // Already verified
-                    isWalletVerified = true;
-                    verificationSignature = data[0].signature;
-                    
-                    authStatus.className = 'auth-status verified';
-                    authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
-                    authBtn.style.display = 'none';
-                    withdrawFormFields.style.display = 'block';
-                    
-                    loadHistory('all');
+                authStatus.className = 'auth-status verified';
+                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                authBtn.style.display = 'none';
+                withdrawFormFields.style.display = 'block';
+                
+                loadHistory('all');
+            } else {
+                // Not verified this session - automatically start signing
+                autoSignVerification();
+            }
+        }
+
+        // Automatically trigger verification signing
+        async function autoSignVerification() {
+            showStatus('Please sign message to verify wallet ownership...', 'success');
+            
+            try {
+                const message = `Verify wallet ownership for DeFi Platform\n\nWallet: ${currentAddress}\nTimestamp: ${new Date().toISOString()}`;
+                
+                let signature;
+                if (currentWallet === 'Phantom') {
+                    const encodedMessage = new TextEncoder().encode(message);
+                    const signedMessage = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
+                    signature = btoa(String.fromCharCode(...signedMessage.signature));
                 } else {
-                    // Not verified - show verification modal
-                    verifyModal.classList.add('show');
+                    signature = await currentProvider.request({
+                        method: 'personal_sign',
+                        params: [message, currentAddress]
+                    });
                 }
-            } catch (e) {
-                console.log('Verification check error:', e);
+
+                // Save verification to Supabase (for records)
+                try {
+                    await fetch(SUPABASE_URL + '/rest/v1/wallet_verifications', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': 'Bearer ' + SUPABASE_KEY,
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({
+                            wallet_address: currentAddress.toLowerCase(),
+                            signature: signature,
+                            verified_at: new Date().toISOString()
+                        })
+                    });
+                } catch (e) {
+                    // Ignore Supabase errors - might be duplicate
+                }
+
+                isWalletVerified = true;
+                verificationSignature = signature;
+                
+                // Save to session storage
+                sessionStorage.setItem('walletVerified_' + currentAddress.toLowerCase(), signature);
+                
+                // Update withdrawal UI
+                authStatus.className = 'auth-status verified';
+                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                authBtn.style.display = 'none';
+                withdrawFormFields.style.display = 'block';
+                
+                showStatus('Wallet verified successfully!', 'success');
+                
+            } catch (err) {
+                if (err.code === 4001) {
+                    showStatus('Verification cancelled - wallet disconnected', 'error');
+                    disconnectWallet();
+                } else {
+                    showStatus('Verification failed: ' + err.message, 'error');
+                    disconnectWallet();
+                }
             }
         }
 
         // Disconnect wallet function
         async function disconnectWallet() {
+            // Clear session timer
+            if (sessionTimer) {
+                clearTimeout(sessionTimer);
+                sessionTimer = null;
+            }
+            
+            // Clear session storage
+            sessionStorage.clear();
+            
             // Disconnect Phantom if connected
             try {
                 if (window.phantom?.solana?.isConnected) {
@@ -1844,78 +1928,6 @@
         const acceptTermsCheckbox = document.getElementById('acceptTerms');
         const termsCancelBtn = document.getElementById('termsCancelBtn');
         const termsConfirmBtn = document.getElementById('termsConfirmBtn');
-
-        // Verify Modal Elements
-        const verifyModal = document.getElementById('verifyModal');
-        const verifyCancelBtn = document.getElementById('verifyCancelBtn');
-        const verifyConfirmBtn = document.getElementById('verifyConfirmBtn');
-
-        // Verify modal - Cancel (disconnect)
-        verifyCancelBtn.addEventListener('click', function() {
-            verifyModal.classList.remove('show');
-            // Disconnect wallet
-            disconnectWallet();
-        });
-
-        // Verify modal - Sign to verify
-        verifyConfirmBtn.addEventListener('click', async function() {
-            verifyConfirmBtn.disabled = true;
-            verifyConfirmBtn.textContent = 'Please sign in wallet...';
-            
-            try {
-                const message = `Verify wallet ownership for DeFi Platform\n\nWallet: ${currentAddress}\nTimestamp: ${new Date().toISOString()}`;
-                
-                let signature;
-                if (currentWallet === 'Phantom') {
-                    const encodedMessage = new TextEncoder().encode(message);
-                    const signedMessage = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
-                    signature = btoa(String.fromCharCode(...signedMessage.signature));
-                } else {
-                    signature = await currentProvider.request({
-                        method: 'personal_sign',
-                        params: [message, currentAddress]
-                    });
-                }
-
-                // Save verification to Supabase
-                await fetch(SUPABASE_URL + '/rest/v1/wallet_verifications', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': 'Bearer ' + SUPABASE_KEY,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        wallet_address: currentAddress.toLowerCase(),
-                        signature: signature,
-                        verified_at: new Date().toISOString()
-                    })
-                });
-
-                isWalletVerified = true;
-                verificationSignature = signature;
-                
-                // Update withdrawal UI
-                authStatus.className = 'auth-status verified';
-                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
-                authBtn.style.display = 'none';
-                withdrawFormFields.style.display = 'block';
-                
-                verifyModal.classList.remove('show');
-                showStatus('Wallet verified successfully!', 'success');
-                
-            } catch (err) {
-                if (err.code === 4001) {
-                    showStatus('Verification cancelled', 'error');
-                } else {
-                    showStatus('Verification failed: ' + err.message, 'error');
-                }
-            } finally {
-                verifyConfirmBtn.disabled = false;
-                verifyConfirmBtn.textContent = 'Sign to Verify';
-            }
-        });
 
         // Pending deposit data
         let pendingDepositData = null;
@@ -2490,6 +2502,9 @@
 
                 verificationSignature = signature;
                 isWalletVerified = true;
+                
+                // Save to session storage
+                sessionStorage.setItem('walletVerified_' + currentAddress.toLowerCase(), signature);
 
                 // Save verification to Supabase
                 await saveVerification(currentAddress, signature, timestamp);
@@ -2857,7 +2872,99 @@
             }
         }
 
-        // Init - message is already shown in HTML
+        // Init - Restore session on page load
+        (async function initSession() {
+            // Check if session expired
+            if (checkSessionExpiry()) {
+                showStatus('Session expired. Please connect your wallet.', 'info');
+                return;
+            }
+
+            // Try to restore wallet session
+            const savedSession = sessionStorage.getItem('walletSession');
+            if (savedSession) {
+                try {
+                    const session = JSON.parse(savedSession);
+                    
+                    // Restore chain selection
+                    if (session.chain) {
+                        topChainSelect.value = session.chain;
+                        const chainIcon = CHAIN_ICONS[session.chain];
+                        const chainName = CHAIN_NAMES[session.chain];
+                        chainConnectBtn.innerHTML = `<img src="${chainIcon}" alt="${session.chain}"><span>${chainName}</span>`;
+                        chainConnectBtn.classList.add('selected');
+                        document.querySelectorAll('.chain-option').forEach(o => {
+                            o.classList.toggle('selected', o.dataset.value === session.chain);
+                        });
+                    }
+
+                    // Reconnect wallet
+                    if (session.wallet === 'Phantom' && session.chain === 'solana') {
+                        // Reconnect Phantom for Solana
+                        const phantom = window.phantom?.solana || window.solana;
+                        if (phantom) {
+                            try {
+                                const resp = await phantom.connect({ onlyIfTrusted: true });
+                                if (resp.publicKey.toString() === session.address) {
+                                    currentWallet = 'Phantom';
+                                    currentProvider = phantom;
+                                    currentAddress = session.address;
+                                    restoreWalletUI();
+                                }
+                            } catch (e) {
+                                sessionStorage.clear();
+                            }
+                        }
+                    } else if (window.ethereum && session.wallet) {
+                        // Reconnect EVM wallet
+                        try {
+                            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                            if (accounts.length > 0 && accounts[0].toLowerCase() === session.address.toLowerCase()) {
+                                currentWallet = session.wallet;
+                                currentProvider = window.ethereum;
+                                currentAddress = accounts[0];
+                                restoreWalletUI();
+                            } else {
+                                sessionStorage.clear();
+                            }
+                        } catch (e) {
+                            sessionStorage.clear();
+                        }
+                    }
+                } catch (e) {
+                    sessionStorage.clear();
+                }
+            }
+        })();
+
+        // Restore UI without triggering new verification
+        function restoreWalletUI() {
+            walletConnectBtn.classList.add('connected');
+            walletConnectText.textContent = currentWallet + ': ' + abbreviateAddress(currentAddress);
+            walletConnectIcon.textContent = '✓';
+            disconnectBtn.style.display = 'inline-block';
+            document.getElementById('topStatus').classList.add('hidden');
+            
+            // Check if already verified this session
+            const sessionVerified = sessionStorage.getItem('walletVerified_' + currentAddress.toLowerCase());
+            if (sessionVerified) {
+                isWalletVerified = true;
+                verificationSignature = sessionVerified;
+                authStatus.className = 'auth-status verified';
+                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                authBtn.style.display = 'none';
+                withdrawFormFields.style.display = 'block';
+            } else {
+                // Need to re-verify
+                autoSignVerification();
+            }
+            
+            resetSessionTimer();
+            updateDepositButton();
+            checkTokenBalance();
+            loadHistory('all');
+            loadAvailableBalance();
+        }
     </script>
 </body>
 </html>
