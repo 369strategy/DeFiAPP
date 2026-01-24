@@ -1345,8 +1345,15 @@
             base: {
                 USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
                 USDT: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb'
+            },
+            solana: {
+                USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
             }
         };
+
+        // Solana RPC endpoint
+        const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
 
         const NETWORKS = {
             ethereum: { chainId: '0x1', chainName: 'Ethereum Mainnet', blockExplorer: 'https://etherscan.io' },
@@ -1681,73 +1688,6 @@
             }
         }
 
-        // Verify modal - Cancel (disconnect)
-        verifyCancelBtn.addEventListener('click', function() {
-            verifyModal.classList.remove('show');
-            // Disconnect wallet
-            disconnectWallet();
-        });
-
-        // Verify modal - Sign to verify
-        verifyConfirmBtn.addEventListener('click', async function() {
-            verifyConfirmBtn.disabled = true;
-            verifyConfirmBtn.textContent = 'Please sign in wallet...';
-            
-            try {
-                const message = `Verify wallet ownership for DeFi Platform\n\nWallet: ${currentAddress}\nTimestamp: ${new Date().toISOString()}`;
-                
-                let signature;
-                if (currentWallet === 'Phantom') {
-                    const encodedMessage = new TextEncoder().encode(message);
-                    const signedMessage = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
-                    signature = btoa(String.fromCharCode(...signedMessage.signature));
-                } else {
-                    signature = await currentProvider.request({
-                        method: 'personal_sign',
-                        params: [message, currentAddress]
-                    });
-                }
-
-                // Save verification to Supabase
-                await fetch(SUPABASE_URL + '/rest/v1/wallet_verifications', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': 'Bearer ' + SUPABASE_KEY,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        wallet_address: currentAddress.toLowerCase(),
-                        signature: signature,
-                        verified_at: new Date().toISOString()
-                    })
-                });
-
-                isWalletVerified = true;
-                verificationSignature = signature;
-                
-                // Update withdrawal UI
-                authStatus.className = 'auth-status verified';
-                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
-                authBtn.style.display = 'none';
-                withdrawFormFields.style.display = 'block';
-                
-                verifyModal.classList.remove('show');
-                showStatus('Wallet verified successfully!', 'success');
-                
-            } catch (err) {
-                if (err.code === 4001) {
-                    showStatus('Verification cancelled', 'error');
-                } else {
-                    showStatus('Verification failed: ' + err.message, 'error');
-                }
-            } finally {
-                verifyConfirmBtn.disabled = false;
-                verifyConfirmBtn.textContent = 'Sign to Verify';
-            }
-        });
-
         // Disconnect wallet function
         async function disconnectWallet() {
             // Disconnect Phantom if connected
@@ -1824,33 +1764,66 @@
 
         // Token balance
         async function checkTokenBalance() {
-            if (!currentProvider || !currentAddress) return;
+            if (!currentAddress) return;
             
             const network = topChainSelect.value;
             const token = tokenSelect.value;
             
-            if (!network || !token || network === 'solana') {
+            if (!network || !token) {
                 tokenBalanceDisplay.textContent = 'Balance: --';
                 maxBtn.style.display = 'none';
                 return;
             }
-            
+
             try {
-                const tokenAddress = TOKEN_CONTRACTS[network][token];
-                if (!tokenAddress) return;
-                
-                const balanceData = '0x70a08231' + currentAddress.slice(2).padStart(64, '0');
-                const balance = await currentProvider.request({
-                    method: 'eth_call',
-                    params: [{ to: tokenAddress, data: balanceData }, 'latest']
-                });
-                
-                const tokenAmount = parseInt(balance, 16) / 1e6;
+                let tokenAmount = 0;
+
+                if (network === 'solana') {
+                    // Solana token balance check
+                    const tokenMint = TOKEN_CONTRACTS.solana[token];
+                    const response = await fetch(SOLANA_RPC, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: 1,
+                            method: 'getTokenAccountsByOwner',
+                            params: [
+                                currentAddress,
+                                { mint: tokenMint },
+                                { encoding: 'jsonParsed' }
+                            ]
+                        })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.result?.value?.length > 0) {
+                        const balance = data.result.value[0].account.data.parsed.info.tokenAmount;
+                        tokenAmount = parseFloat(balance.uiAmount) || 0;
+                    }
+                } else {
+                    // EVM token balance check
+                    if (!currentProvider) return;
+                    
+                    const tokenAddress = TOKEN_CONTRACTS[network][token];
+                    if (!tokenAddress) return;
+                    
+                    const balanceData = '0x70a08231' + currentAddress.slice(2).padStart(64, '0');
+                    const balance = await currentProvider.request({
+                        method: 'eth_call',
+                        params: [{ to: tokenAddress, data: balanceData }, 'latest']
+                    });
+                    
+                    tokenAmount = parseInt(balance, 16) / 1e6;
+                }
+
                 currentTokenBalance = tokenAmount;
                 tokenBalanceDisplay.textContent = 'Balance: ' + tokenAmount.toFixed(2) + ' ' + token;
                 maxBtn.style.display = tokenAmount > 0 ? 'inline-block' : 'none';
             } catch (err) {
-                tokenBalanceDisplay.textContent = 'Balance: Error';
+                console.log('Balance check error:', err);
+                tokenBalanceDisplay.textContent = 'Balance: --';
+                maxBtn.style.display = 'none';
             }
         }
 
@@ -1876,6 +1849,73 @@
         const verifyModal = document.getElementById('verifyModal');
         const verifyCancelBtn = document.getElementById('verifyCancelBtn');
         const verifyConfirmBtn = document.getElementById('verifyConfirmBtn');
+
+        // Verify modal - Cancel (disconnect)
+        verifyCancelBtn.addEventListener('click', function() {
+            verifyModal.classList.remove('show');
+            // Disconnect wallet
+            disconnectWallet();
+        });
+
+        // Verify modal - Sign to verify
+        verifyConfirmBtn.addEventListener('click', async function() {
+            verifyConfirmBtn.disabled = true;
+            verifyConfirmBtn.textContent = 'Please sign in wallet...';
+            
+            try {
+                const message = `Verify wallet ownership for DeFi Platform\n\nWallet: ${currentAddress}\nTimestamp: ${new Date().toISOString()}`;
+                
+                let signature;
+                if (currentWallet === 'Phantom') {
+                    const encodedMessage = new TextEncoder().encode(message);
+                    const signedMessage = await window.phantom.solana.signMessage(encodedMessage, 'utf8');
+                    signature = btoa(String.fromCharCode(...signedMessage.signature));
+                } else {
+                    signature = await currentProvider.request({
+                        method: 'personal_sign',
+                        params: [message, currentAddress]
+                    });
+                }
+
+                // Save verification to Supabase
+                await fetch(SUPABASE_URL + '/rest/v1/wallet_verifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        wallet_address: currentAddress.toLowerCase(),
+                        signature: signature,
+                        verified_at: new Date().toISOString()
+                    })
+                });
+
+                isWalletVerified = true;
+                verificationSignature = signature;
+                
+                // Update withdrawal UI
+                authStatus.className = 'auth-status verified';
+                authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
+                authBtn.style.display = 'none';
+                withdrawFormFields.style.display = 'block';
+                
+                verifyModal.classList.remove('show');
+                showStatus('Wallet verified successfully!', 'success');
+                
+            } catch (err) {
+                if (err.code === 4001) {
+                    showStatus('Verification cancelled', 'error');
+                } else {
+                    showStatus('Verification failed: ' + err.message, 'error');
+                }
+            } finally {
+                verifyConfirmBtn.disabled = false;
+                verifyConfirmBtn.textContent = 'Sign to Verify';
+            }
+        });
 
         // Pending deposit data
         let pendingDepositData = null;
@@ -1914,12 +1954,14 @@
 
             if (!network || !token || !amount) return;
 
-            if (network === 'solana') {
-                showStatus('Solana deposits require additional setup', 'error');
+            // Solana requires Phantom wallet
+            if (network === 'solana' && currentWallet !== 'Phantom') {
+                showStatus('Please connect Phantom wallet for Solana deposits', 'error');
                 return;
             }
 
-            if (currentWallet === 'Phantom') {
+            // EVM chains require MetaMask/Rabby
+            if (network !== 'solana' && currentWallet === 'Phantom') {
                 showStatus('Use MetaMask or Rabby for EVM chains', 'error');
                 return;
             }
@@ -1937,6 +1979,13 @@
             depositBtn.innerHTML = '<div class="loading"></div> Processing...';
 
             try {
+                // Handle Solana deposits separately
+                if (network === 'solana') {
+                    await executeSolanaDeposit(token, amount, recipient);
+                    return;
+                }
+
+                // EVM deposit flow
                 // Switch network if needed
                 const targetChainId = NETWORKS[network].chainId;
                 try {
@@ -2007,6 +2056,264 @@
                 depositBtn.innerHTML = 'Deposit';
                 depositBtn.disabled = false;
                 updateDepositButton();
+            }
+        }
+
+        // Execute Solana SPL token deposit
+        async function executeSolanaDeposit(token, amount, recipient) {
+            try {
+                const phantom = window.phantom?.solana || window.solana;
+                if (!phantom || !phantom.isConnected) {
+                    throw new Error('Phantom wallet not connected');
+                }
+
+                // Get token mint address
+                const tokenMint = TOKEN_CONTRACTS.solana[token];
+                if (!tokenMint) {
+                    throw new Error('Invalid token for Solana');
+                }
+
+                showStatus('Loading Solana libraries...', 'success');
+
+                // Load Solana web3.js
+                await loadSolanaWeb3();
+                const { Connection, PublicKey, Transaction, TransactionInstruction } = window.solanaWeb3;
+
+                // Amount in token units (USDC/USDT have 6 decimals on Solana)
+                const amountInUnits = BigInt(Math.floor(amount * 1e6));
+
+                showStatus('Preparing transaction...', 'success');
+
+                // Create connection
+                const connection = new Connection(SOLANA_RPC, 'confirmed');
+
+                // Get sender's public key
+                const senderPubkey = phantom.publicKey;
+                
+                // Token Program ID
+                const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+                const mintPubkey = new PublicKey(tokenMint);
+                const recipientPubkey = new PublicKey(recipient);
+
+                // Find sender's token account
+                const senderTokenAccounts = await connection.getTokenAccountsByOwner(senderPubkey, { mint: mintPubkey });
+                if (senderTokenAccounts.value.length === 0) {
+                    throw new Error(`No ${token} token account found in your wallet`);
+                }
+                const senderTokenAccount = senderTokenAccounts.value[0].pubkey;
+
+                // Find recipient's token account
+                const recipientTokenAccounts = await connection.getTokenAccountsByOwner(recipientPubkey, { mint: mintPubkey });
+                if (recipientTokenAccounts.value.length === 0) {
+                    throw new Error(`Recipient does not have a ${token} token account`);
+                }
+                const recipientTokenAccount = recipientTokenAccounts.value[0].pubkey;
+
+                // Create transfer instruction data
+                // Layout: u8 instruction (3 = Transfer) + u64 amount
+                const dataBuffer = new ArrayBuffer(9);
+                const dataView = new DataView(dataBuffer);
+                dataView.setUint8(0, 3); // Transfer instruction = 3
+                // Write amount as little-endian u64
+                const lo = Number(amountInUnits & BigInt(0xFFFFFFFF));
+                const hi = Number((amountInUnits >> BigInt(32)) & BigInt(0xFFFFFFFF));
+                dataView.setUint32(1, lo, true);
+                dataView.setUint32(5, hi, true);
+
+                const transferInstruction = new TransactionInstruction({
+                    keys: [
+                        { pubkey: senderTokenAccount, isSigner: false, isWritable: true },
+                        { pubkey: recipientTokenAccount, isSigner: false, isWritable: true },
+                        { pubkey: senderPubkey, isSigner: true, isWritable: false }
+                    ],
+                    programId: TOKEN_PROGRAM_ID,
+                    data: new Uint8Array(dataBuffer)
+                });
+
+                // Get recent blockhash
+                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+
+                // Create transaction
+                const transaction = new Transaction();
+                transaction.add(transferInstruction);
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = senderPubkey;
+
+                showStatus('Please approve transaction in Phantom...', 'success');
+
+                // Sign and send
+                const { signature } = await phantom.signAndSendTransaction(transaction);
+                const txHash = signature;
+
+                // Log transaction
+                const txData = {
+                    type: 'Deposit',
+                    hash: txHash,
+                    amount: amount,
+                    token: token,
+                    network: 'solana',
+                    status: 'Pending',
+                    timestamp: Date.now()
+                };
+
+                showStatus('Transaction submitted: ' + txHash.slice(0, 20) + '...', 'success');
+                amountInput.value = '';
+                updateDepositButton();
+
+                // Monitor Solana transaction
+                monitorSolanaTransaction(txHash, txData);
+
+            } catch (err) {
+                if (err.code === 4001 || err.message?.includes('User rejected')) {
+                    showStatus('Transaction cancelled', 'error');
+                } else {
+                    showStatus('Error: ' + err.message, 'error');
+                    console.error('Solana deposit error:', err);
+                }
+            } finally {
+                depositBtn.innerHTML = 'Deposit';
+                depositBtn.disabled = false;
+                updateDepositButton();
+            }
+        }
+
+        // Load Solana web3.js dynamically
+        async function loadSolanaWeb3() {
+            if (window.solanaWeb3) return window.solanaWeb3;
+            
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js';
+                script.onload = () => {
+                    window.solanaWeb3 = window.solanaWeb3 || solanaWeb3;
+                    resolve(window.solanaWeb3);
+                };
+                script.onerror = () => reject(new Error('Failed to load Solana library'));
+                document.head.appendChild(script);
+            });
+        }
+
+        // Monitor Solana transaction
+        async function monitorSolanaTransaction(txHash, txData) {
+            let attempts = 0;
+            const check = async () => {
+                try {
+                    const response = await fetch(SOLANA_RPC, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: 1,
+                            method: 'getTransaction',
+                            params: [txHash, { encoding: 'jsonParsed', commitment: 'confirmed' }]
+                        })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.result) {
+                        const success = data.result.meta?.err === null;
+                        
+                        if (success) {
+                            showStatus('Verifying Solana deposit...', 'success');
+                            
+                            // Verify the transaction
+                            const verification = await verifySolanaDeposit(txHash, txData.amount, txData.token);
+                            
+                            if (verification.valid) {
+                                showStatus('Deposit verified and confirmed!', 'success');
+                                saveDeposit(verification.verifiedAmount, txData.token, 'solana', txHash, 'confirmed');
+                            } else {
+                                showStatus('Verification failed: ' + verification.reason, 'error');
+                                saveDeposit(txData.amount, txData.token, 'solana', txHash, 'failed');
+                            }
+                        } else {
+                            showStatus('Transaction failed on Solana', 'error');
+                        }
+                        return;
+                    }
+                    
+                    if (++attempts < 60) setTimeout(check, 5000);
+                } catch (e) {
+                    console.log('Solana monitor error:', e);
+                    if (++attempts < 60) setTimeout(check, 5000);
+                }
+            };
+            setTimeout(check, 5000);
+        }
+
+        // Verify Solana deposit
+        async function verifySolanaDeposit(txHash, expectedAmount, expectedToken) {
+            try {
+                const response = await fetch(SOLANA_RPC, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'getTransaction',
+                        params: [txHash, { encoding: 'jsonParsed', commitment: 'confirmed' }]
+                    })
+                });
+                const data = await response.json();
+                
+                if (!data.result || data.result.meta?.err !== null) {
+                    return { valid: false, reason: 'Transaction failed or not found' };
+                }
+
+                // Check token transfers in the transaction
+                const expectedMint = TOKEN_CONTRACTS.solana[expectedToken];
+                const expectedRecipient = DEPOSIT_ADDRESSES.solana;
+                
+                // Look for token transfer in inner instructions or main instructions
+                const instructions = data.result.transaction?.message?.instructions || [];
+                const innerInstructions = data.result.meta?.innerInstructions || [];
+                
+                let transferFound = false;
+                let verifiedAmount = 0;
+
+                // Check parsed instructions for token transfers
+                for (const ix of instructions) {
+                    if (ix.parsed?.type === 'transfer' || ix.parsed?.type === 'transferChecked') {
+                        const info = ix.parsed.info;
+                        // Check if destination matches our deposit address's token account
+                        if (info.mint === expectedMint || !info.mint) {
+                            // Get the amount
+                            const amount = parseFloat(info.amount || info.tokenAmount?.amount || 0) / 1e6;
+                            if (amount > 0) {
+                                verifiedAmount = amount;
+                                transferFound = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Also check post token balances for verification
+                if (!transferFound && data.result.meta?.postTokenBalances) {
+                    for (const balance of data.result.meta.postTokenBalances) {
+                        if (balance.mint === expectedMint && balance.owner === expectedRecipient) {
+                            // Found our deposit
+                            transferFound = true;
+                            verifiedAmount = expectedAmount; // Use expected since we found the deposit
+                            break;
+                        }
+                    }
+                }
+
+                if (!transferFound) {
+                    return { valid: false, reason: 'No valid token transfer found' };
+                }
+
+                // Verify amount matches (allow small difference)
+                if (Math.abs(verifiedAmount - expectedAmount) > 0.01) {
+                    return { valid: false, reason: `Amount mismatch. Expected: ${expectedAmount}, Found: ${verifiedAmount}` };
+                }
+
+                return { valid: true, verifiedAmount: verifiedAmount };
+
+            } catch (e) {
+                console.error('Solana verification error:', e);
+                return { valid: false, reason: 'Verification failed: ' + e.message };
             }
         }
 
