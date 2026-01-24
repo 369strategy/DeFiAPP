@@ -1578,7 +1578,7 @@
                 amountInput.value = '';
                 updateDepositButton();
 
-                // Monitor transaction
+                // Monitor transaction for confirmation, then save
                 monitorTransaction(txHash, network, txData);
 
             } catch (err) {
@@ -1606,13 +1606,16 @@
                         txData.status = receipt.status === '0x1' ? 'Success' : 'Failed';
                         if (txData.status === 'Success') {
                             showStatus('Transaction confirmed!', 'success');
+                            // Save deposit after blockchain confirmation
                             saveDeposit(txData.amount, txData.token, txData.network, txData.hash);
                             setTimeout(checkTokenBalance, 2000);
                         }
                         return;
                     }
                     if (++attempts < 60) setTimeout(check, 5000);
-                } catch (e) {}
+                } catch (e) {
+                    console.log('Monitor error:', e);
+                }
             };
             setTimeout(check, 5000);
         }
@@ -2117,12 +2120,15 @@
         // Deposit tracking with Supabase
         async function saveDeposit(amount, token, network, txHash) {
             try {
+                console.log('Saving deposit:', { amount, token, network, txHash, wallet: currentAddress });
+                
                 const response = await fetch(SUPABASE_URL + '/rest/v1/deposits', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'apikey': SUPABASE_KEY,
-                        'Authorization': 'Bearer ' + SUPABASE_KEY
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'Prefer': 'return=representation'
                     },
                     body: JSON.stringify({
                         wallet_address: currentAddress.toLowerCase(),
@@ -2133,11 +2139,19 @@
                         status: 'confirmed'
                     })
                 });
+                
+                const result = await response.json();
+                console.log('Save deposit response:', response.status, result);
+                
                 if (response.ok) {
                     loadHistory('all');
+                } else {
+                    console.error('Failed to save deposit:', result);
+                    showStatus('Warning: Deposit may not have been recorded', 'error');
                 }
             } catch (e) {
-                console.log('Supabase save error:', e);
+                console.error('Supabase save error:', e);
+                showStatus('Warning: Deposit may not have been recorded', 'error');
             }
         }
 
