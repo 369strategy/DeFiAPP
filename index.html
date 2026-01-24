@@ -1327,7 +1327,7 @@
             }
         };
 
-        const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+        const SOLANA_RPC = 'https://solana-mainnet.g.alchemy.com/v2/UJ-pPERNqt6Q7E5CmtbwG';
 
         const NETWORKS = {
             ethereum: { chainId: '0x1', chainName: 'Ethereum Mainnet', blockExplorer: 'https://etherscan.io' },
@@ -1819,6 +1819,9 @@
 
                 if (network === 'solana') {
                     const tokenMint = TOKEN_CONTRACTS.solana[token];
+                    console.log('Checking Solana balance for mint:', tokenMint);
+                    console.log('Wallet address:', currentAddress);
+                    
                     const response = await fetch(SOLANA_RPC, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1834,10 +1837,18 @@
                         })
                     });
                     const data = await response.json();
+                    console.log('Solana RPC response:', data);
+                    
+                    if (data.error) {
+                        console.error('Solana RPC error:', data.error);
+                    }
                     
                     if (data.result?.value?.length > 0) {
                         const balance = data.result.value[0].account.data.parsed.info.tokenAmount;
                         tokenAmount = parseFloat(balance.uiAmount) || 0;
+                        console.log('Found balance:', tokenAmount);
+                    } else {
+                        console.log('No token account found for this mint');
                     }
                 } else {
                     if (!currentProvider) return;
@@ -1858,8 +1869,9 @@
                 tokenBalanceDisplay.textContent = 'Balance: ' + tokenAmount.toFixed(2) + ' ' + token;
                 maxBtn.style.display = tokenAmount > 0 ? 'inline-block' : 'none';
             } catch (err) {
-                console.log('Balance check error:', err);
-                tokenBalanceDisplay.textContent = 'Balance: --';
+                console.error('Balance check error:', err);
+                console.error('Network:', network, 'Token:', token);
+                tokenBalanceDisplay.textContent = 'Balance: Error';
                 maxBtn.style.display = 'none';
             }
         }
