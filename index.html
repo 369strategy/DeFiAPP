@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1093,7 +1092,6 @@
         let currentProvider = null;
         let currentAddress = null;
         let currentChainId = null;
-        let transactionHistory = [];
         let currentTokenBalance = 0;
         let isWalletVerified = false;
         let verificationSignature = null;
@@ -1533,9 +1531,6 @@
                     status: 'Pending',
                     timestamp: Date.now()
                 };
-                transactionHistory.unshift(txData);
-                updateTransactionLog();
-                transactionLog.style.display = 'block';
 
                 showStatus('Transaction submitted: ' + txHash.slice(0, 20) + '...', 'success');
                 amountInput.value = '';
@@ -1557,16 +1552,6 @@
             }
         });
 
-        function updateTransactionLog() {
-            transactionList.innerHTML = transactionHistory.slice(0, 10).map(tx => 
-                '<div class="transaction-item">' +
-                '<div>' + tx.type + ': ' + tx.amount + ' ' + tx.token + ' on ' + tx.network + '</div>' +
-                '<div>Status: ' + tx.status + '</div>' +
-                '<div>TX: <span class="tx-hash" onclick="window.open(\'' + NETWORKS[tx.network].blockExplorer + '/tx/' + tx.hash + '\')">' + tx.hash.slice(0, 20) + '...</span></div>' +
-                '</div>'
-            ).join('');
-        }
-
         async function monitorTransaction(txHash, network, txData) {
             let attempts = 0;
             const check = async () => {
@@ -1577,7 +1562,6 @@
                     });
                     if (receipt) {
                         txData.status = receipt.status === '0x1' ? 'Success' : 'Failed';
-                        updateTransactionLog();
                         if (txData.status === 'Success') {
                             showStatus('Transaction confirmed!', 'success');
                             saveDeposit(txData.amount, txData.token, txData.network, txData.hash);
