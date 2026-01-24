@@ -461,6 +461,43 @@
             background: #00cc6a;
         }
 
+        .amount-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .amount-input-wrapper input {
+            flex: 1;
+            padding-right: 100px;
+        }
+
+        .amount-quick-btns {
+            position: absolute;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .quick-btn {
+            background: #333;
+            border: 1px solid #444;
+            padding: 4px 8px;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 400;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:hover {
+            background: #444;
+            border-color: #00ff88;
+        }
+
         .deposit-info {
             background: #0f0f0f;
             border: 1px solid #222;
@@ -1041,12 +1078,17 @@
 
                         <div class="form-group">
                             <label for="withdrawAmount">Amount</label>
-                            <input type="number" id="withdrawAmount" placeholder="0.00" step="0.000001" min="0">
+                            <div class="amount-input-wrapper">
+                                <input type="number" id="withdrawAmount" placeholder="0.00" step="0.000001" min="0">
+                                <div class="amount-quick-btns">
+                                    <button type="button" class="quick-btn" id="withdraw50Btn">50%</button>
+                                    <button type="button" class="quick-btn" id="withdrawMaxBtn2">MAX</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="token-balance" id="withdrawBalanceDisplay" style="margin-top: -8px; margin-bottom: 16px;">
                             <span id="availableBalanceText">Available: --</span>
-                            <button class="max-btn" id="withdrawMaxBtn" style="display: none;">MAX</button>
                         </div>
 
                         <div class="withdraw-info">
@@ -1798,7 +1840,6 @@
         async function loadAvailableBalance() {
             if (!currentAddress || !withdrawToken.value) {
                 document.getElementById('availableBalanceText').textContent = 'Available: --';
-                document.getElementById('withdrawMaxBtn').style.display = 'none';
                 return;
             }
 
@@ -1817,9 +1858,9 @@
                 );
                 const deposits = await depositsRes.json() || [];
                 
-                // Fetch pending withdrawals
+                // Fetch pending, approved, and completed withdrawals
                 const withdrawalsRes = await fetch(
-                    SUPABASE_URL + '/rest/v1/withdrawal_requests?wallet_address=eq.' + currentAddress.toLowerCase() + '&token=eq.' + token + '&status=in.(pending,approved)',
+                    SUPABASE_URL + '/rest/v1/withdrawal_requests?wallet_address=eq.' + currentAddress.toLowerCase() + '&token=eq.' + token + '&status=in.(pending,approved,completed)',
                     {
                         headers: {
                             'apikey': SUPABASE_KEY,
@@ -1832,13 +1873,12 @@
                 let totalDeposited = 0;
                 deposits.forEach(d => totalDeposited += parseFloat(d.amount));
                 
-                let totalPending = 0;
-                withdrawals.forEach(w => totalPending += parseFloat(w.amount));
+                let totalWithdrawn = 0;
+                withdrawals.forEach(w => totalWithdrawn += parseFloat(w.amount));
                 
-                availableWithdrawBalance = totalDeposited - totalPending;
+                availableWithdrawBalance = Math.max(0, totalDeposited - totalWithdrawn);
                 
                 document.getElementById('availableBalanceText').textContent = 'Available: ' + availableWithdrawBalance.toFixed(2) + ' ' + token;
-                document.getElementById('withdrawMaxBtn').style.display = availableWithdrawBalance > 0 ? 'inline-block' : 'none';
                 
             } catch (e) {
                 console.log('Balance check error:', e);
@@ -1846,8 +1886,14 @@
         }
 
         // Withdraw MAX button
-        document.getElementById('withdrawMaxBtn').addEventListener('click', function() {
+        document.getElementById('withdrawMaxBtn2').addEventListener('click', function() {
             withdrawAmount.value = availableWithdrawBalance;
+            updateWithdrawButton();
+        });
+
+        // Withdraw 50% button
+        document.getElementById('withdraw50Btn').addEventListener('click', function() {
+            withdrawAmount.value = (availableWithdrawBalance / 2).toFixed(2);
             updateWithdrawButton();
         });
 
@@ -1885,9 +1931,9 @@
                 );
                 const deposits = await depositsRes.json() || [];
                 
-                // Fetch pending/approved withdrawals for this token
+                // Fetch pending, approved, and completed withdrawals for this token
                 const withdrawalsRes = await fetch(
-                    SUPABASE_URL + '/rest/v1/withdrawal_requests?wallet_address=eq.' + currentAddress.toLowerCase() + '&token=eq.' + token + '&status=in.(pending,approved)',
+                    SUPABASE_URL + '/rest/v1/withdrawal_requests?wallet_address=eq.' + currentAddress.toLowerCase() + '&token=eq.' + token + '&status=in.(pending,approved,completed)',
                     {
                         headers: {
                             'apikey': SUPABASE_KEY,
@@ -1901,10 +1947,10 @@
                 let totalDeposited = 0;
                 deposits.forEach(d => totalDeposited += parseFloat(d.amount));
                 
-                let totalPendingWithdrawals = 0;
-                withdrawals.forEach(w => totalPendingWithdrawals += parseFloat(w.amount));
+                let totalWithdrawn = 0;
+                withdrawals.forEach(w => totalWithdrawn += parseFloat(w.amount));
                 
-                const availableBalance = totalDeposited - totalPendingWithdrawals;
+                const availableBalance = Math.max(0, totalDeposited - totalWithdrawn);
 
                 // Check if withdrawal exceeds available balance
                 if (amount > availableBalance) {
