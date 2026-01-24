@@ -1170,7 +1170,7 @@
 
         // Supabase
         const SUPABASE_URL = 'https://ltgaocmbllnsmufsqvbt.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0Z2FvY21ibGxuc211ZnNxdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc1ODkxNTQsImV4cCI6MjA1MzE2NTE1NH0.INCFLYC6LBVM7vSdKUxbXZyqPGN4E1Hg_LbJhbSjqKc';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0Z2FvY21ibGxuc211ZnNxdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjg5MjQsImV4cCI6MjA4NDc0NDkyNH0.FuI_cxeb7wlc9PdBc6R1Ii8n-1YWB_HKTJENgIn1KHk';
 
         // DOM Elements
         const topChainSelect = document.getElementById('topChainSelect');
@@ -2145,13 +2145,14 @@
                 
                 if (response.ok) {
                     loadHistory('all');
+                    loadAvailableBalance();
                 } else {
                     console.error('Failed to save deposit:', result);
-                    showStatus('Warning: Deposit may not have been recorded', 'error');
+                    alert('Supabase Error: ' + JSON.stringify(result));
                 }
             } catch (e) {
                 console.error('Supabase save error:', e);
-                showStatus('Warning: Deposit may not have been recorded', 'error');
+                alert('Network Error: ' + e.message);
             }
         }
 
