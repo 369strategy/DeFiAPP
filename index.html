@@ -1110,7 +1110,7 @@
         </div>
         <div class="stats-row">
             <div class="stat-block">
-                <div class="stat-label">Total Deposited</div>
+                <div class="stat-label">Balance</div>
                 <div class="stat-value" id="heroTotalDeposited">$0.00</div>
             </div>
             <div class="stat-block">
@@ -1218,7 +1218,7 @@
 
             <div class="history-summary" id="historySummary">
                 <div class="summary-item">
-                    <span class="summary-label">Total Deposited</span>
+                    <span class="summary-label">Balance</span>
                     <span class="summary-value" id="summaryDeposited">$0.00</span>
                 </div>
                 <div class="summary-item">
@@ -2449,19 +2449,26 @@
 
                 let totalDeposited = 0;
                 let totalPending = 0;
+                let totalWithdrawn = 0;
                 
                 deposits.forEach(d => {
                     if (d.status === 'confirmed') totalDeposited += parseFloat(d.amount);
                 });
                 
                 withdrawals.forEach(w => {
-                    if (w.status === 'pending') totalPending += parseFloat(w.amount);
+                    if (w.status === 'pending') {
+                        totalPending += parseFloat(w.amount);
+                        totalWithdrawn += parseFloat(w.amount);
+                    } else if (w.status === 'approved' || w.status === 'completed') {
+                        totalWithdrawn += parseFloat(w.amount);
+                    }
                 });
 
-                document.getElementById('heroTotalDeposited').textContent = '$' + totalDeposited.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                var balance = totalDeposited - totalWithdrawn;
+                document.getElementById('heroTotalDeposited').textContent = '$' + balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('heroDepositCount').textContent = deposits.length;
 
-                summaryDeposited.textContent = '$' + totalDeposited.toFixed(2);
+                summaryDeposited.textContent = '$' + balance.toFixed(2);
                 summaryPending.textContent = '$' + totalPending.toFixed(2);
 
                 let items = [];
