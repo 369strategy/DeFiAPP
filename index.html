@@ -1299,6 +1299,14 @@
         let lastActivity = Date.now();
 
         // =============================================
+        // SERVER-SIDE SESSION MANAGEMENT (NEW)
+        // =============================================
+        let sessionToken = null;
+        let sessionExpiresAt = null;
+        const SESSION_REFRESH_THRESHOLD = 2 * 60 * 1000; // Refresh 2 minutes before expiry
+        let sessionRefreshTimer = null;
+
+        // =============================================
         // CONFIGURATION
         // =============================================
         const DEPOSIT_ADDRESSES = {
@@ -1397,6 +1405,130 @@
                 'Authorization': 'Bearer ' + SUPABASE_KEY,
                 'x-wallet-address': currentAddress ? currentAddress.toLowerCase() : ''
             };
+        }
+
+        // =============================================
+        // SERVER SESSION FUNCTIONS (NEW)
+        // =============================================
+        async function createServerSession(walletAddress, walletSignature) {
+            try {
+                const response = await fetch(SUPABASE_URL + '/functions/v1/session-manager', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + SUPABASE_KEY
+                    },
+                    body: JSON.stringify({
+                        action: 'create_session',
+                        wallet_address: walletAddress,
+                        wallet_signature: walletSignature
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    sessionToken = result.session_token;
+                    sessionExpiresAt = result.expires_at;
+                    
+                    sessionStorage.setItem('sessionToken', sessionToken);
+                    sessionStorage.setItem('sessionExpiresAt', sessionExpiresAt.toString());
+                    
+                    console.log('Server session created, expires in:', result.expires_in_ms / 1000, 'seconds');
+                    scheduleSessionRefresh();
+                    return true;
+                } else {
+                    console.error('Failed to create session:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Session creation error:', error);
+                return false;
+            }
+        }
+
+        async function refreshServerSession() {
+            if (!sessionToken || !currentAddress) return false;
+
+            try {
+                const response = await fetch(SUPABASE_URL + '/functions/v1/session-manager', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + SUPABASE_KEY
+                    },
+                    body: JSON.stringify({
+                        action: 'refresh_session',
+                        session_token: sessionToken,
+                        wallet_address: currentAddress
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    sessionToken = result.session_token;
+                    sessionExpiresAt = result.expires_at;
+                    
+                    sessionStorage.setItem('sessionToken', sessionToken);
+                    sessionStorage.setItem('sessionExpiresAt', sessionExpiresAt.toString());
+                    
+                    console.log('Session refreshed, new expiry:', new Date(sessionExpiresAt));
+                    scheduleSessionRefresh();
+                    return true;
+                } else {
+                    console.warn('Session refresh failed:', result.error);
+                    handleSessionExpired();
+                    return false;
+                }
+            } catch (error) {
+                console.error('Session refresh error:', error);
+                return false;
+            }
+        }
+
+        function isSessionValid() {
+            if (!sessionToken || !sessionExpiresAt) return false;
+            return Date.now() < sessionExpiresAt;
+        }
+
+        function scheduleSessionRefresh() {
+            if (sessionRefreshTimer) {
+                clearTimeout(sessionRefreshTimer);
+            }
+
+            if (!sessionExpiresAt) return;
+
+            const timeUntilExpiry = sessionExpiresAt - Date.now();
+            const refreshIn = Math.max(timeUntilExpiry - SESSION_REFRESH_THRESHOLD, 1000);
+
+            console.log('Session refresh scheduled in:', refreshIn / 1000, 'seconds');
+
+            sessionRefreshTimer = setTimeout(async () => {
+                if (currentAddress && isSessionValid()) {
+                    await refreshServerSession();
+                }
+            }, refreshIn);
+        }
+
+        function handleSessionExpired() {
+            showStatus('Session expired. Please reconnect your wallet.', 'error');
+            sessionToken = null;
+            sessionExpiresAt = null;
+            sessionStorage.removeItem('sessionToken');
+            sessionStorage.removeItem('sessionExpiresAt');
+        }
+
+        function clearServerSession() {
+            sessionToken = null;
+            sessionExpiresAt = null;
+            sessionStorage.removeItem('sessionToken');
+            sessionStorage.removeItem('sessionExpiresAt');
+            
+            if (sessionRefreshTimer) {
+                clearTimeout(sessionRefreshTimer);
+                sessionRefreshTimer = null;
+            }
         }
 
         // =============================================
@@ -1661,6 +1793,19 @@
                 authBtn.style.display = 'none';
                 withdrawFormFields.style.display = 'block';
                 
+                // Restore or create server session (NEW)
+                const savedToken = sessionStorage.getItem('sessionToken');
+                const savedExpiry = sessionStorage.getItem('sessionExpiresAt');
+                
+                if (savedToken && savedExpiry && Date.now() < parseInt(savedExpiry)) {
+                    sessionToken = savedToken;
+                    sessionExpiresAt = parseInt(savedExpiry);
+                    scheduleSessionRefresh();
+                } else if (verificationSignature) {
+                    // Create new server session
+                    await createServerSession(currentAddress, verificationSignature);
+                }
+                
                 loadHistory('all');
             } else {
                 autoSignVerification();
@@ -1703,6 +1848,12 @@
                 isWalletVerified = true;
                 verificationSignature = signature;
                 
+                // *** NEW: Create server-validated session ***
+                const sessionCreated = await createServerSession(currentAddress, signature);
+                if (!sessionCreated) {
+                    console.warn('Server session creation failed, continuing with signature only');
+                }
+                
                 sessionStorage.setItem('walletVerified_' + currentAddress.toLowerCase(), signature);
                 
                 authStatus.className = 'auth-status verified';
@@ -1727,6 +1878,9 @@
         // DISCONNECT WALLET
         // =============================================
         async function disconnectWallet() {
+            // Clear server session (NEW)
+            clearServerSession();
+            
             if (sessionTimer) {
                 clearTimeout(sessionTimer);
                 sessionTimer = null;
@@ -2353,6 +2507,14 @@
                 return;
             }
 
+            // Check session validity only if we have a session token (NEW)
+            // If no session token, server will fall back to signature verification
+            if (sessionToken && !isSessionValid()) {
+                showStatus('Session expired. Please reconnect your wallet.', 'error');
+                handleSessionExpired();
+                return;
+            }
+
             const token = withdrawToken.value;
             const amount = parseFloat(withdrawAmount.value);
             const network = topChainSelect.value;
@@ -2362,61 +2524,59 @@
                 return;
             }
 
+            if (amount < 1) {
+                showStatus('Minimum withdrawal is $1', 'error');
+                return;
+            }
+
+            // Client-side balance check (server will also validate)
+            if (amount > availableWithdrawBalance) {
+                showStatus('Insufficient balance', 'error');
+                return;
+            }
+
             withdrawBtn.disabled = true;
-            withdrawBtn.innerHTML = '<div class="loading"></div> Checking...';
+            withdrawBtn.innerHTML = '<div class="loading"></div> Submitting...';
 
             try {
-                // Verify balance
-                const depositsRes = await fetch(
-                    SUPABASE_URL + '/rest/v1/deposits?wallet_address=eq.' + currentAddress.toLowerCase() + '&token=eq.' + token + '&status=eq.confirmed',
-                    { headers: getAuthHeaders() }
-                );
-                const deposits = await depositsRes.json() || [];
-                
-                const withdrawalsRes = await fetch(
-                    SUPABASE_URL + '/rest/v1/withdrawal_requests?wallet_address=eq.' + currentAddress.toLowerCase() + '&token=eq.' + token + '&status=in.(pending,approved,completed)',
-                    { headers: getAuthHeaders() }
-                );
-                const withdrawals = await withdrawalsRes.json() || [];
-
-                let totalDeposited = 0;
-                deposits.forEach(d => totalDeposited += parseFloat(d.amount));
-                
-                let totalWithdrawn = 0;
-                withdrawals.forEach(w => totalWithdrawn += parseFloat(w.amount));
-                
-                const availableBalance = Math.max(0, totalDeposited - totalWithdrawn);
-
-                if (amount > availableBalance) {
-                    showStatus(`Insufficient balance. You have ${availableBalance.toFixed(2)} ${token} available.`, 'error');
-                    withdrawBtn.innerHTML = 'Request Withdrawal';
-                    withdrawBtn.disabled = false;
-                    return;
-                }
-
-                withdrawBtn.innerHTML = '<div class="loading"></div> Submitting...';
-
-                const response = await fetch(SUPABASE_URL + '/rest/v1/withdrawal_requests', {
+                // *** NEW: Call Edge Function instead of direct database insert ***
+                const response = await fetch(SUPABASE_URL + '/functions/v1/submit-withdrawal', {
                     method: 'POST',
-                    headers: getAuthHeaders(),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + SUPABASE_KEY
+                    },
                     body: JSON.stringify({
                         wallet_address: currentAddress.toLowerCase(),
                         token: token,
                         amount: amount,
-                        to_address: currentAddress.toLowerCase(),
                         network: network,
-                        status: 'pending',
-                        verification_signature: verificationSignature
+                        verification_signature: verificationSignature,
+                        session_token: sessionToken  // Include session token
                     })
                 });
 
-                if (response.ok) {
+                const result = await response.json();
+
+                if (response.ok && result.success) {
                     showStatus('Withdrawal request submitted successfully!', 'success');
                     withdrawAmount.value = '';
                     loadHistory('all');
                     loadAvailableBalance();
                 } else {
-                    throw new Error('Failed to submit request');
+                    // Handle specific error cases
+                    if (result.requires_reauth) {
+                        handleSessionExpired();
+                    } else if (result.error && result.error.includes('Insufficient')) {
+                        showStatus(result.error, 'error');
+                        loadAvailableBalance();
+                    } else if (response.status === 429) {
+                        showStatus('Too many requests. Please wait a moment.', 'error');
+                    } else if (response.status === 403) {
+                        showStatus('Connection not secure. Please use HTTPS.', 'error');
+                    } else {
+                        throw new Error(result.error || 'Failed to submit request');
+                    }
                 }
             } catch (err) {
                 showStatus('Error: ' + err.message, 'error');
@@ -2599,6 +2759,24 @@
             disconnectBtn.style.display = 'inline-block';
             document.getElementById('topStatus').classList.add('hidden');
             
+            // Restore server session token (NEW)
+            const savedToken = sessionStorage.getItem('sessionToken');
+            const savedExpiry = sessionStorage.getItem('sessionExpiresAt');
+            
+            if (savedToken && savedExpiry) {
+                const expiryTime = parseInt(savedExpiry);
+                if (Date.now() < expiryTime) {
+                    sessionToken = savedToken;
+                    sessionExpiresAt = expiryTime;
+                    scheduleSessionRefresh();
+                    console.log('Server session restored, expires:', new Date(expiryTime));
+                } else {
+                    // Session expired, clear it
+                    sessionStorage.removeItem('sessionToken');
+                    sessionStorage.removeItem('sessionExpiresAt');
+                }
+            }
+            
             const sessionVerified = sessionStorage.getItem('walletVerified_' + currentAddress.toLowerCase());
             if (sessionVerified) {
                 isWalletVerified = true;
@@ -2607,6 +2785,11 @@
                 authStatus.innerHTML = '✅ Wallet verified! You can now request withdrawals.';
                 authBtn.style.display = 'none';
                 withdrawFormFields.style.display = 'block';
+                
+                // If no server session but we have signature, create one (NEW)
+                if (!sessionToken && verificationSignature) {
+                    createServerSession(currentAddress, verificationSignature);
+                }
             } else {
                 autoSignVerification();
             }
