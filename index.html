@@ -4069,27 +4069,41 @@
                 
                 if (selectedChain === 'solana') {
                     // Solana token balance check
+                    console.log('Checking Solana balance...');
                     const phantom = window.phantom?.solana || window.solana;
+                    console.log('Phantom:', phantom);
+                    console.log('Phantom publicKey:', phantom?.publicKey?.toString());
+                    
                     if (phantom && phantom.publicKey) {
                         await loadSolanaWeb3();
                         const { Connection, PublicKey } = window.solanaWeb3;
                         const connection = new Connection(SOLANA_RPC, 'confirmed');
                         
                         const tokenMint = SOLANA_TOKEN_MINTS[selectedDepositToken];
+                        console.log('Token mint:', tokenMint);
+                        console.log('Selected token:', selectedDepositToken);
+                        
                         if (tokenMint) {
                             const mintPubkey = new PublicKey(tokenMint);
+                            console.log('Fetching token accounts for:', phantom.publicKey.toString());
+                            
                             const tokenAccounts = await connection.getTokenAccountsByOwner(
                                 phantom.publicKey,
                                 { mint: mintPubkey }
                             );
                             
+                            console.log('Token accounts found:', tokenAccounts.value.length);
+                            
                             if (tokenAccounts.value.length > 0) {
                                 const accountInfo = await connection.getTokenAccountBalance(
                                     tokenAccounts.value[0].pubkey
                                 );
+                                console.log('Account info:', accountInfo);
                                 tokenBalance = parseFloat(accountInfo.value.uiAmount) || 0;
                             }
                         }
+                    } else {
+                        console.log('Phantom not connected or no publicKey');
                     }
                 } else if (currentProvider) {
                     // EVM token balance check
@@ -4104,6 +4118,7 @@
                     tokenBalance = parseInt(result, 16) / 1e6;
                 }
                 
+                console.log('Final token balance:', tokenBalance);
                 walletTokenBalance = tokenBalance;
                 document.getElementById('walletTokenBalance').textContent = tokenBalance.toFixed(2) + ' ' + selectedDepositToken;
                 
@@ -4111,6 +4126,7 @@
                 document.getElementById('depositActionBtn').disabled = !currentAddress || depositAmount <= 0;
                 
             } catch (error) {
+                console.error('Balance check error:', error);
                 document.getElementById('walletTokenBalance').textContent = 'Error';
             }
         }
